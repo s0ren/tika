@@ -62,6 +62,30 @@ public class HtmlParser extends AbstractParser {
      */
     private static final Schema HTML_SCHEMA = new HTMLSchema();
 
+    public HtmlParser() {
+        super();
+
+        // Have meta reported everywhere, also in the body
+        HTML_SCHEMA.elementType("meta", HTMLSchema.M_EMPTY, 65535, 0);
+
+        // https://issues.apache.org/jira/browse/TIKA-985
+        String html5Elements[] = { "article", "aside", "audio", "bdi",
+          "command", "datalist", "details", "embed", "summary", "figure",
+          "figcaption", "footer", "header", "hgroup", "keygen", "mark",
+          "meter", "nav", "output", "progress", "section", "source", "time",
+          "track", "video" };
+
+        for (String html5Element : html5Elements) {
+          HTML_SCHEMA.elementType(html5Element, HTMLSchema.M_ANY, 255, 0);
+        }
+        HTML_SCHEMA.elementType("h1", HTMLSchema.M_EMPTY, 65535, 0);
+        HTML_SCHEMA.elementType("h2", HTMLSchema.M_EMPTY, 65535, 0);
+        HTML_SCHEMA.elementType("h3", HTMLSchema.M_EMPTY, 65535, 0);
+        HTML_SCHEMA.elementType("h4", HTMLSchema.M_EMPTY, 65535, 0);
+        HTML_SCHEMA.elementType("h5", HTMLSchema.M_EMPTY, 65535, 0);
+        HTML_SCHEMA.elementType("h6", HTMLSchema.M_EMPTY, 65535, 0);
+    }
+
     public Set<MediaType> getSupportedTypes(ParseContext context) {
         return SUPPORTED_TYPES;
     }
@@ -126,7 +150,7 @@ public class HtmlParser extends AbstractParser {
      * @since Apache Tika 0.5
      * @param name HTML element name (upper case)
      * @return XHTML element name (lower case), or
-     *         <code>null</code> if the element is unsafe 
+     *         <code>null</code> if the element is unsafe
      */
     protected String mapSafeElement(String name) {
         return DefaultHtmlMapper.INSTANCE.mapSafeElement(name);
@@ -154,8 +178,8 @@ public class HtmlParser extends AbstractParser {
     **/
     public String mapSafeAttribute(String elementName, String attributeName) {
         return DefaultHtmlMapper.INSTANCE.mapSafeAttribute(elementName,attributeName) ;
-    }    
-    
+    }
+
     /**
      * Adapter class that maintains backwards compatibility with the
      * protected HtmlParser methods. Making HtmlParser implement HtmlMapper
