@@ -20,7 +20,18 @@ import java.io.IOException;
 import java.util.HashSet;
 
 import org.apache.poi.hslf.HSLFSlideShow;
-import org.apache.poi.hslf.model.*;
+import org.apache.poi.hslf.model.Comment;
+import org.apache.poi.hslf.model.HeadersFooters;
+import org.apache.poi.hslf.model.MasterSheet;
+import org.apache.poi.hslf.model.Notes;
+import org.apache.poi.hslf.model.OLEShape;
+import org.apache.poi.hslf.model.Picture;
+import org.apache.poi.hslf.model.Shape;
+import org.apache.poi.hslf.model.Slide;
+import org.apache.poi.hslf.model.Table;
+import org.apache.poi.hslf.model.TableCell;
+import org.apache.poi.hslf.model.TextRun;
+import org.apache.poi.hslf.model.TextShape;
 import org.apache.poi.hslf.usermodel.ObjectData;
 import org.apache.poi.hslf.usermodel.PictureData;
 import org.apache.poi.hslf.usermodel.SlideShow;
@@ -135,7 +146,7 @@ public class HSLFExtractor extends AbstractPOIFSExtractor {
          if (notes == null) {
             continue;
          }
-         Integer id = Integer.valueOf(notes._getSheetNumber());
+         Integer id = notes._getSheetNumber();
          if (seenNotes.contains(id)) {
             continue;
          }
@@ -174,11 +185,10 @@ public class HSLFExtractor extends AbstractPOIFSExtractor {
       }
 
       xhtml.startElement("div", "class", "slide-master-content");
-      for (int i = 0; i < shapes.length; i++){
-         Shape sh = shapes[i];
-         if (sh != null && ! MasterSheet.isPlaceholder(sh)){
-            if (sh instanceof TextShape){
-               TextShape tsh = (TextShape)sh;
+      for (Shape shape : shapes){
+         if (shape != null && ! MasterSheet.isPlaceholder(shape)){
+            if (shape instanceof TextShape){
+               TextShape tsh = (TextShape)shape;
                String text = tsh.getText();
                if (text != null){
                   xhtml.element("p", text);

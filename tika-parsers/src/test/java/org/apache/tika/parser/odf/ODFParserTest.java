@@ -22,6 +22,7 @@ import static org.junit.Assert.assertTrue;
 import java.io.InputStream;
 
 import org.apache.tika.TikaTest;
+import org.apache.tika.io.TikaInputStream;
 import org.apache.tika.metadata.Metadata;
 import org.apache.tika.metadata.Office;
 import org.apache.tika.metadata.OfficeOpenXMLCore;
@@ -61,11 +62,11 @@ public class ODFParserTest extends TikaTest {
                    metadata.get(Metadata.CONTENT_TYPE));
 
              String content = handler.toString();
-             assertTrue(content.contains("Tika is part of the Lucene project."));
-             assertTrue(content.contains("Solr"));
-             assertTrue(content.contains("one embedded"));
-             assertTrue(content.contains("Rectangle Title"));
-             assertTrue(content.contains("a blue background and dark border"));        
+             assertContains("Tika is part of the Lucene project.", content);
+             assertContains("Solr", content);
+             assertContains("one embedded", content);
+             assertContains("Rectangle Title", content);
+             assertContains("a blue background and dark border", content);        
           } finally {
              input.close();
           }
@@ -326,4 +327,85 @@ public class ODFParserTest extends TikaTest {
             input.close();
         }
     }  
+    
+    @Test
+    public void testFromFile() throws Exception {
+       TikaInputStream tis = TikaInputStream.get(this.getClass().getResource(
+               "/test-documents/testODFwithOOo3.odt"));
+       assertEquals(true, tis.hasFile());
+
+       OpenDocumentParser parser = new OpenDocumentParser();
+
+       try {
+           Metadata metadata = new Metadata();
+           ContentHandler handler = new BodyContentHandler();
+           parser.parse(tis, handler, metadata, new ParseContext());
+
+           assertEquals(
+                   "application/vnd.oasis.opendocument.text",
+                   metadata.get(Metadata.CONTENT_TYPE));
+
+           String content = handler.toString();
+           assertContains("Tika is part of the Lucene project.", content);
+       } finally {
+           tis.close();
+       }
+    }
+    
+    @Test
+    public void testNPEFromFile() throws Exception {
+        TikaInputStream tis = TikaInputStream.get(this.getClass().getResource(
+                "/test-documents/testNPEOpenDocument.odt"));
+        OpenDocumentParser parser = new OpenDocumentParser();
+
+        try {
+          Metadata metadata = new Metadata();
+          ContentHandler handler = new BodyContentHandler();
+          parser.parse(tis, handler, metadata, new ParseContext());
+
+          assertEquals(
+                  "application/vnd.oasis.opendocument.text",
+                  metadata.get(Metadata.CONTENT_TYPE));
+
+          String content = handler.toString();
+          assertContains("primero hay que generar un par de claves", content);
+        } finally {
+          tis.close();
+        }
+    }
+
+    // TIKA-1063: Test basic style support.
+    @Test
+    public void testODTStyles() throws Exception {
+        String xml = getXML("testStyles.odt").xml;
+        assertContains("This <i>is</i> <b>just</b> a <u>test</u>", xml);
+        assertContains("<p>And <b>another <i>test</i> is</b> here.</p>", xml);
+        assertContains("<ol>\t<li><p>One</p>", xml);
+        assertContains("</ol>", xml);
+        assertContains("<ul>\t<li><p>First</p>", xml);
+        assertContains("</ul>", xml);
+    }
+
+    //TIKA-1600: Test that null pointer doesn't break parsing.
+    @Test
+    public void testNullStylesInODTFooter() throws Exception {
+        Parser parser = new OpenDocumentParser();
+        InputStream input = ODFParserTest.class.getResourceAsStream("/test-documents/testODT-TIKA-6000.odt");
+        try {
+            Metadata metadata = new Metadata();
+            ContentHandler handler = new BodyContentHandler();
+            parser.parse(input, handler, metadata, new ParseContext());
+
+            assertEquals("application/vnd.oasis.opendocument.text", metadata.get(Metadata.CONTENT_TYPE));
+
+            String content = handler.toString();
+
+            assertContains("Utilisation de ce document", content);
+            assertContains("Copyright and License", content);
+            assertContains("Changer la langue", content);
+            assertContains("La page d’accueil permet de faire une recherche simple", content);
+        } finally {
+            input.close();
+        }
+    }
 }

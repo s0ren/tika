@@ -16,14 +16,15 @@
  */
 package org.apache.tika.parser.mp4;
 
+import static org.apache.tika.TikaTest.assertContains;
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
 
 import java.io.InputStream;
 
 import org.apache.tika.io.TikaInputStream;
 import org.apache.tika.metadata.Metadata;
 import org.apache.tika.metadata.TikaCoreProperties;
+import org.apache.tika.metadata.XMP;
 import org.apache.tika.metadata.XMPDM;
 import org.apache.tika.parser.AutoDetectParser;
 import org.apache.tika.parser.ParseContext;
@@ -66,12 +67,12 @@ public class MP4ParserTest {
 
         // Check the textual contents
         String content = handler.toString();
-        assertTrue(content.contains("Test Title"));
-        assertTrue(content.contains("Test Artist"));
-        assertTrue(content.contains("Test Album"));
-        assertTrue(content.contains("2008"));
-        assertTrue(content.contains("Test Comment"));
-        assertTrue(content.contains("Test Genre"));
+        assertContains("Test Title", content);
+        assertContains("Test Artist", content);
+        assertContains("Test Album", content);
+        assertContains("2008", content);
+        assertContains("Test Comment", content);
+        assertContains("Test Genre", content);
         
         // Check XMPDM-typed audio properties
         assertEquals("Test Album", metadata.get(XMPDM.ALBUM));
@@ -81,10 +82,17 @@ public class MP4ParserTest {
         assertEquals("Test Genre", metadata.get(XMPDM.GENRE));
         assertEquals("Test Comments", metadata.get(XMPDM.LOG_COMMENT.getName()));
         assertEquals("1", metadata.get(XMPDM.TRACK_NUMBER));
+        assertEquals("Test Album Artist", metadata.get(XMPDM.ALBUM_ARTIST));
+        assertEquals("6", metadata.get(XMPDM.DISC_NUMBER));
+        assertEquals("0", metadata.get(XMPDM.COMPILATION));
+        
         
         assertEquals("44100", metadata.get(XMPDM.AUDIO_SAMPLE_RATE));
-        //assertEquals("Stereo", metadata.get(XMPDM.AUDIO_CHANNEL_TYPE)); // TODO Extract
+        assertEquals("Stereo", metadata.get(XMPDM.AUDIO_CHANNEL_TYPE));
         assertEquals("M4A", metadata.get(XMPDM.AUDIO_COMPRESSOR));
+        assertEquals("0.07", metadata.get(XMPDM.DURATION));
+        
+        assertEquals("iTunes 10.5.3.3", metadata.get(XMP.CREATOR_TOOL));
         
         
         // Check again by file, rather than stream

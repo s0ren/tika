@@ -17,7 +17,6 @@
 package org.apache.tika.parser.pkg;
 
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
 
 import java.io.InputStream;
 
@@ -47,26 +46,26 @@ public class GzipParserTest extends AbstractPkgTest {
             stream.close();
         }
 
-        assertEquals("application/x-gzip", metadata.get(Metadata.CONTENT_TYPE));
+        assertEquals("application/gzip", metadata.get(Metadata.CONTENT_TYPE));
         String content = handler.toString();
-        assertTrue(content.contains("test-documents/testEXCEL.xls"));
-        assertTrue(content.contains("Sample Excel Worksheet"));
-        assertTrue(content.contains("test-documents/testHTML.html"));
-        assertTrue(content.contains("Test Indexation Html"));
-        assertTrue(content.contains("test-documents/testOpenOffice2.odt"));
-        assertTrue(content.contains("This is a sample Open Office document"));
-        assertTrue(content.contains("test-documents/testPDF.pdf"));
-        assertTrue(content.contains("Apache Tika"));
-        assertTrue(content.contains("test-documents/testPPT.ppt"));
-        assertTrue(content.contains("Sample Powerpoint Slide"));
-        assertTrue(content.contains("test-documents/testRTF.rtf"));
-        assertTrue(content.contains("indexation Word"));
-        assertTrue(content.contains("test-documents/testTXT.txt"));
-        assertTrue(content.contains("Test d'indexation de Txt"));
-        assertTrue(content.contains("test-documents/testWORD.doc"));
-        assertTrue(content.contains("This is a sample Microsoft Word Document"));
-        assertTrue(content.contains("test-documents/testXML.xml"));
-        assertTrue(content.contains("Rida Benjelloun"));
+        assertContains("test-documents/testEXCEL.xls", content);
+        assertContains("Sample Excel Worksheet", content);
+        assertContains("test-documents/testHTML.html", content);
+        assertContains("Test Indexation Html", content);
+        assertContains("test-documents/testOpenOffice2.odt", content);
+        assertContains("This is a sample Open Office document", content);
+        assertContains("test-documents/testPDF.pdf", content);
+        assertContains("Apache Tika", content);
+        assertContains("test-documents/testPPT.ppt", content);
+        assertContains("Sample Powerpoint Slide", content);
+        assertContains("test-documents/testRTF.rtf", content);
+        assertContains("indexation Word", content);
+        assertContains("test-documents/testTXT.txt", content);
+        assertContains("Test d'indexation de Txt", content);
+        assertContains("test-documents/testWORD.doc", content);
+        assertContains("This is a sample Microsoft Word Document", content);
+        assertContains("test-documents/testXML.xml", content);
+        assertContains("Rida Benjelloun", content);
     }
 
     /**
@@ -90,9 +89,11 @@ public class GzipParserTest extends AbstractPkgTest {
        // Should find a single entry, for the (compressed) tar file
        assertEquals(1, tracker.filenames.size());
        assertEquals(1, tracker.mediatypes.size());
+       assertEquals(1, tracker.modifiedAts.size());
        
        assertEquals(null, tracker.filenames.get(0));
        assertEquals(null, tracker.mediatypes.get(0));
+       assertEquals(null, tracker.modifiedAts.get(0));
 
        // Tar file starts with the directory name
        assertEquals("test-documents/", new String(tracker.lastSeenStart, 0, 15, "ASCII"));
@@ -112,9 +113,9 @@ public class GzipParserTest extends AbstractPkgTest {
             stream.close();
         }
 
-        assertEquals("application/x-gzip", metadata.get(Metadata.CONTENT_TYPE));
+        assertEquals("application/gzip", metadata.get(Metadata.CONTENT_TYPE));
         String content = handler.toString();
-        assertTrue(content.contains("Test SVG image"));
+        assertContains("Test SVG image", content);
     }
 
 }

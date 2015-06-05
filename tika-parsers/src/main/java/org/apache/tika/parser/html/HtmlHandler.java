@@ -52,6 +52,8 @@ class HtmlHandler extends TextContentHandler {
     private int discardLevel = 0;
 
     private int titleLevel = 0;
+    
+    private boolean isTitleSetToMetadata = false; 
 
     private final StringBuilder title = new StringBuilder();
 
@@ -158,14 +160,15 @@ class HtmlHandler extends TextContentHandler {
                 metadata.set("ICBM", value);
             }
         } else if (name.equalsIgnoreCase(Metadata.CONTENT_TYPE)){
+            //don't overwrite Metadata.CONTENT_TYPE!
             MediaType type = MediaType.parse(value);
             if (type != null) {
-                metadata.set(Metadata.CONTENT_TYPE, type.toString());
+                metadata.set(TikaCoreProperties.CONTENT_TYPE_HINT, type.toString());
             } else {
-                metadata.set(Metadata.CONTENT_TYPE, value);
+                metadata.set(TikaCoreProperties.CONTENT_TYPE_HINT, value);
             }
         } else {
-            metadata.set(name, value);
+            metadata.add(name, value);
         }
     }
 
@@ -238,8 +241,9 @@ class HtmlHandler extends TextContentHandler {
 
         if (titleLevel > 0) {
             titleLevel--;
-            if (titleLevel == 0) {
+            if (titleLevel == 0 && !isTitleSetToMetadata) {            	
                 metadata.set(TikaCoreProperties.TITLE, title.toString().trim());
+                isTitleSetToMetadata = true;
             }
         }
         if (bodyLevel > 0) {

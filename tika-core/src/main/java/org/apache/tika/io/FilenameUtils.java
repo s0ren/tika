@@ -17,9 +17,11 @@
 package org.apache.tika.io;
 
 import java.util.HashSet;
+import java.util.Locale;
 
 
 public class FilenameUtils {
+
 
     /**
      * Reserved characters
@@ -34,11 +36,13 @@ public class FilenameUtils {
 
     private final static HashSet<Character> RESERVED = new HashSet<Character>(38);
 
+
     static {
         for (int i=0; i<RESERVED_FILENAME_CHARACTERS.length; ++i) {
             RESERVED.add(RESERVED_FILENAME_CHARACTERS[i]);
         }
     }
+
 
     /**
      * Scans the given file name for reserved characters on different OSs and
@@ -62,12 +66,48 @@ public class FilenameUtils {
 
         for (char c: name.toCharArray()) {
             if (RESERVED.contains(c)) {
-                sb.append('%').append((c<16) ? "0" : "").append(Integer.toHexString(c).toUpperCase());
+                sb.append('%').append((c<16) ? "0" : "").append(Integer.toHexString(c).toUpperCase(Locale.ROOT));
             } else {
                 sb.append(c);
             }
         }
 
         return sb.toString();
+    }
+
+    /**
+     * This is a duplication of the algorithm and functionality
+     * available in commons io FilenameUtils.  If Java's File were 
+     * able handle Windows file paths correctly in linux,
+     * we wouldn't need this.
+     * <p>
+     * The goal of this is to get a filename from a path.
+     * The package parsers and some other embedded doc
+     * extractors could put anything into Metadata.RESOURCE_NAME_KEY.
+     * <p>
+     * If a careless client used that filename as if it were a
+     * filename and not a path when writing embedded files,
+     * bad things could happen.  Consider: "../../../my_ppt.ppt".
+     * <p>
+     * Consider using this in combination with {@link #normalize(String)}.
+     * 
+     * @param path path to strip
+     * @return empty string or a filename, never null
+     */
+    public static String getName(final String path) {
+        
+        if (path == null || path.length() == 0) {
+            return "";
+        }
+        int unix = path.lastIndexOf("/");
+        int windows = path.lastIndexOf("\\");
+        //some macintosh file names are stored with : as the delimiter
+        //also necessary to properly handle C:somefilename
+        int colon = path.lastIndexOf(":");
+        String cand = path.substring(Math.max(colon, Math.max(unix, windows))+1);
+        if (cand.equals("..") || cand.equals(".")){
+            return "";
+        }
+        return cand;
     }
 }

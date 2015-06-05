@@ -23,9 +23,10 @@
   <modelVersion>4.0.0</modelVersion>
 
   <parent>
+
     <groupId>org.apache.tika</groupId>
     <artifactId>tika-parent</artifactId>
-    <version>1.5.1-SNAPSHOT</version>
+    <version>1.8</version>
     <relativePath>../tika-parent/pom.xml</relativePath>
   </parent>
 
@@ -34,6 +35,11 @@
 
   <name>Apache Tika Java-7 Components</name>
   <description>Java-7 reliant components, including FileTypeDetector implementations</description>
+
+  <properties>
+    <maven.compiler.source>1.7</maven.compiler.source>
+    <maven.compiler.target>1.7</maven.compiler.target>
+  </properties>
 
   <build>
     <plugins>
@@ -54,15 +60,6 @@
             </Export-Package>
             <Private-Package />
           </instructions>
-        </configuration>
-      </plugin>
-      <plugin>
-        <groupId>org.apache.maven.plugins</groupId>
-        <artifactId>maven-compiler-plugin</artifactId>
-        <version>3.1</version>
-        <configuration>
-          <source>1.7</source>
-          <target>1.7</target>
         </configuration>
       </plugin>
     </plugins>
@@ -87,27 +84,25 @@
     <dependency>
       <groupId>junit</groupId>
       <artifactId>junit</artifactId>
-      <scope>test</scope>
-      <version>4.11</version>
     </dependency>
   </dependencies>
 
   <url>http://tika.apache.org/</url>
   <organization>
-  	<name>The Apache Software Foundation</name>
-  	<url>http://www.apache.org</url>
+    <name>The Apache Software Foundation</name>
+    <url>http://www.apache.org</url>
   </organization>
   <scm>
-  	<url>http://svn.apache.org/viewvc/tika/branches/1.5/tika-java7</url>
-  	<connection>scm:svn:http://svn.apache.org/repos/asf/tika/branches/1.5/tika-java7</connection>
-  	<developerConnection>scm:svn:https://svn.apache.org/repos/asf/tika/branches/1.5/tika-java7</developerConnection>
+    <url>http://svn.apache.org/viewvc/tika/tags/1.8-rc2/tika-java7</url>
+    <connection>scm:svn:http://svn.apache.org/repos/asf/tika/tags/1.8-rc2/tika-java7</connection>
+    <developerConnection>scm:svn:https://svn.apache.org/repos/asf/tika/tags/1.8-rc2/tika-java7</developerConnection>
   </scm>
   <issueManagement>
-  	<system>JIRA</system>
-  	<url>https://issues.apache.org/jira/browse/TIKA</url>
+    <system>JIRA</system>
+    <url>https://issues.apache.org/jira/browse/TIKA</url>
   </issueManagement>
   <ciManagement>
-  	<system>Jenkins</system>
-  	<url>https://builds.apache.org/job/Tika-trunk/</url>
+    <system>Jenkins</system>
+    <url>https://builds.apache.org/job/Tika-trunk/</url>
   </ciManagement>
 </project>

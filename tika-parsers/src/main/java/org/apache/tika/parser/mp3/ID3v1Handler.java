@@ -101,7 +101,7 @@ public class ID3v1Handler implements ID3Tags {
     }
 
     public List<ID3Comment> getComments() {
-       return Arrays.asList(new ID3Comment[] {comment});
+       return Arrays.asList(comment);
     }
 
     public String getGenre() {
@@ -117,6 +117,30 @@ public class ID3v1Handler implements ID3Tags {
      *  so returns null;
      */
     public String getComposer() {
+        return null;
+    }
+
+    /**
+     * ID3v1 doesn't have album-wide artists,
+     *  so returns null;
+     */
+    public String getAlbumArtist() {
+        return null;
+    }
+
+    /**
+     * ID3v1 doesn't have disc numbers,
+     *  so returns null;
+     */
+    public String getDisc() {
+        return null;
+    }
+
+    /**
+     * ID3v1 doesn't have compilations,
+     *  so returns null;
+     */
+    public String getCompilation() {
         return null;
     }
 

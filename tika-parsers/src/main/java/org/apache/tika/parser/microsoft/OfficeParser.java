@@ -158,10 +158,15 @@ public class OfficeParser extends AbstractParser {
                 root = ((NPOIFSFileSystem) container).getRoot();
             } else if (container instanceof DirectoryNode) {
                 root = (DirectoryNode) container;
-            } else if (tstream.hasFile()) {
-                root = new NPOIFSFileSystem(tstream.getFileChannel()).getRoot();
             } else {
-                root = new NPOIFSFileSystem(new CloseShieldInputStream(tstream)).getRoot();
+                NPOIFSFileSystem fs;
+                if (tstream.hasFile()) {
+                    fs = new NPOIFSFileSystem(tstream.getFile(), true);
+                } else {
+                    fs = new NPOIFSFileSystem(new CloseShieldInputStream(tstream));
+                }
+                tstream.setOpenContainer(fs);
+                root = fs.getRoot();
             }
         }
         parse(root, context, metadata, xhtml);
@@ -184,10 +189,7 @@ public class OfficeParser extends AbstractParser {
 
         switch (type) {
         case SOLIDWORKS_PART:
-//        	new SolidworksExtractor(context).parse(root, xhtml);
-        	break;
         case SOLIDWORKS_ASSEMBLY:
-        	break;
         case SOLIDWORKS_DRAWING:
         	break;
         case PUBLISHER:
@@ -204,7 +206,7 @@ public class OfficeParser extends AbstractParser {
         case WORKBOOK:
         case XLR:
            Locale locale = context.get(Locale.class, Locale.getDefault());
-           new ExcelExtractor(context).parse(root, xhtml, locale);
+           new ExcelExtractor(context, metadata).parse(root, xhtml, locale);
            break;
         case PROJECT:
            // We currently can't do anything beyond the metadata
@@ -255,6 +257,10 @@ public class OfficeParser extends AbstractParser {
            } catch (GeneralSecurityException ex) {
               throw new EncryptedDocumentException(ex);
            }
+        default:
+            // For unsupported / unhandled types, just the metadata
+            //  is extracted, which happened above
+            break;
         }
     }
 

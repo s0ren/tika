@@ -17,6 +17,7 @@
 package org.apache.tika.parser.pkg;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
@@ -24,8 +25,11 @@ import java.io.InputStream;
 import java.util.HashSet;
 import java.util.Set;
 
+import org.apache.commons.codec.binary.Base64;
+import org.apache.commons.compress.archivers.ArchiveStreamFactory;
 import org.apache.tika.Tika;
 import org.apache.tika.extractor.EmbeddedDocumentExtractor;
+import org.apache.tika.io.TikaInputStream;
 import org.apache.tika.metadata.Metadata;
 import org.apache.tika.parser.AutoDetectParser;
 import org.apache.tika.parser.ParseContext;
@@ -33,6 +37,7 @@ import org.apache.tika.parser.Parser;
 import org.apache.tika.sax.BodyContentHandler;
 import org.junit.Test;
 import org.xml.sax.ContentHandler;
+import org.xml.sax.helpers.DefaultHandler;
 
 /**
  * Test case for parsing zip files.
@@ -55,24 +60,24 @@ public class ZipParserTest extends AbstractPkgTest {
 
         assertEquals("application/zip", metadata.get(Metadata.CONTENT_TYPE));
         String content = handler.toString();
-        assertTrue(content.contains("testEXCEL.xls"));
-        assertTrue(content.contains("Sample Excel Worksheet"));
-        assertTrue(content.contains("testHTML.html"));
-        assertTrue(content.contains("Test Indexation Html"));
-        assertTrue(content.contains("testOpenOffice2.odt"));
-        assertTrue(content.contains("This is a sample Open Office document"));
-        assertTrue(content.contains("testPDF.pdf"));
-        assertTrue(content.contains("Apache Tika"));
-        assertTrue(content.contains("testPPT.ppt"));
-        assertTrue(content.contains("Sample Powerpoint Slide"));
-        assertTrue(content.contains("testRTF.rtf"));
-        assertTrue(content.contains("indexation Word"));
-        assertTrue(content.contains("testTXT.txt"));
-        assertTrue(content.contains("Test d'indexation de Txt"));
-        assertTrue(content.contains("testWORD.doc"));
-        assertTrue(content.contains("This is a sample Microsoft Word Document"));
-        assertTrue(content.contains("testXML.xml"));
-        assertTrue(content.contains("Rida Benjelloun"));
+        assertContains("testEXCEL.xls", content);
+        assertContains("Sample Excel Worksheet", content);
+        assertContains("testHTML.html", content);
+        assertContains("Test Indexation Html", content);
+        assertContains("testOpenOffice2.odt", content);
+        assertContains("This is a sample Open Office document", content);
+        assertContains("testPDF.pdf", content);
+        assertContains("Apache Tika", content);
+        assertContains("testPPT.ppt", content);
+        assertContains("Sample Powerpoint Slide", content);
+        assertContains("testRTF.rtf", content);
+        assertContains("indexation Word", content);
+        assertContains("testTXT.txt", content);
+        assertContains("Test d'indexation de Txt", content);
+        assertContains("testWORD.doc", content);
+        assertContains("This is a sample Microsoft Word Document", content);
+        assertContains("testXML.xml", content);
+        assertContains("Rida Benjelloun", content);
     }
 
     /**
@@ -96,9 +101,10 @@ public class ZipParserTest extends AbstractPkgTest {
        // Should have found all 9 documents
        assertEquals(9, tracker.filenames.size());
        assertEquals(9, tracker.mediatypes.size());
+       assertEquals(9, tracker.modifiedAts.size());
        
-       // Should have names but not content types, as zip doesn't
-       //  store the content types
+       // Should have names and modified dates, but not content types, 
+       //  as zip doesn't store the content types
        assertEquals("testEXCEL.xls", tracker.filenames.get(0));
        assertEquals("testHTML.html", tracker.filenames.get(1));
        assertEquals("testOpenOffice2.odt", tracker.filenames.get(2));
@@ -111,6 +117,13 @@ public class ZipParserTest extends AbstractPkgTest {
        
        for(String type : tracker.mediatypes) {
           assertNull(type);
+       }
+       for(String crt : tracker.createdAts) {
+           assertNull(crt);
+       }
+       for(String mod : tracker.modifiedAts) {
+           assertNotNull(mod);
+           assertTrue("Modified at " + mod, mod.startsWith("20"));
        }
     }
 
@@ -126,7 +139,7 @@ public class ZipParserTest extends AbstractPkgTest {
         String content = new Tika().parseToString(
                 ZipParserTest.class.getResourceAsStream(
                         "/test-documents/moby.zip"));
-        assertTrue(content.contains("README"));
+        assertContains("README", content);
     }
 
     private class GatherRelIDsDocumentExtractor implements EmbeddedDocumentExtractor {
@@ -171,4 +184,30 @@ public class ZipParserTest extends AbstractPkgTest {
         assertTrue(relIDs.allRelIDs.contains("test1.txt"));
         assertTrue(relIDs.allRelIDs.contains("test2.txt"));
     }
+
+    @Test // TIKA-936
+    public void testCustomEncoding() throws Exception {
+        ArchiveStreamFactory factory = new ArchiveStreamFactory();
+        factory.setEntryEncoding("SJIS");
+        trackingContext.set(ArchiveStreamFactory.class, factory);
+
+        InputStream stream = TikaInputStream.get(Base64.decodeBase64(
+                "UEsDBBQAAAAIAI+CvUCDo3+zIgAAACgAAAAOAAAAk/qWe4zqg4GDgi50"
+                + "eHRr2tj0qulsc2pzRHN609Gm7Y1OvFxNYLHJv6ZV97yCiQEAUEsBAh"
+                + "QLFAAAAAgAj4K9QIOjf7MiAAAAKAAAAA4AAAAAAAAAAAAgAAAAAAAA"
+                + "AJP6lnuM6oOBg4IudHh0UEsFBgAAAAABAAEAPAAAAE4AAAAAAA=="));
+        try {
+            autoDetectParser.parse(
+                    stream, new DefaultHandler(),
+                    new Metadata(), trackingContext);
+        } finally {
+            stream.close();
+        }
+
+        assertEquals(1, tracker.filenames.size());
+        assertEquals(
+                "\u65E5\u672C\u8A9E\u30E1\u30E2.txt",
+                tracker.filenames.get(0));
+    }
+
 }

@@ -16,11 +16,16 @@
  */
 package org.apache.tika.parser.html;
 
+import static org.apache.tika.TikaTest.assertContains;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
+import javax.xml.transform.OutputKeys;
+import javax.xml.transform.sax.SAXTransformerFactory;
+import javax.xml.transform.sax.TransformerHandler;
+import javax.xml.transform.stream.StreamResult;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -30,21 +35,17 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.regex.Pattern;
 
-import javax.xml.transform.OutputKeys;
-import javax.xml.transform.sax.SAXTransformerFactory;
-import javax.xml.transform.sax.TransformerHandler;
-import javax.xml.transform.stream.StreamResult;
-
 import org.apache.tika.Tika;
 import org.apache.tika.exception.TikaException;
+import org.apache.tika.io.IOUtils;
 import org.apache.tika.metadata.Geographic;
 import org.apache.tika.metadata.Metadata;
 import org.apache.tika.metadata.TikaCoreProperties;
+import org.apache.tika.parser.AutoDetectParser;
 import org.apache.tika.parser.ParseContext;
 import org.apache.tika.sax.BodyContentHandler;
 import org.apache.tika.sax.LinkContentHandler;
 import org.apache.tika.sax.TeeContentHandler;
-import org.apache.tika.sax.TextContentHandler;
 import org.ccil.cowan.tagsoup.HTMLSchema;
 import org.ccil.cowan.tagsoup.Schema;
 import org.junit.Ignore;
@@ -134,14 +135,15 @@ public class HtmlParserTest {
         String content = new Tika().parseToString(
                 HtmlParserTest.class.getResourceAsStream(path), metadata);
 
-        assertEquals("application/xhtml+xml", metadata.get(Metadata.CONTENT_TYPE));
+        //can't specify charset because default differs between OS's
+        assertTrue(metadata.get(Metadata.CONTENT_TYPE).startsWith("application/xhtml+xml; charset="));
         assertEquals("XHTML test document", metadata.get(TikaCoreProperties.TITLE));
 
         assertEquals("Tika Developers", metadata.get("Author"));
         assertEquals("5", metadata.get("refresh"));
-        assertTrue(content.contains("ability of Apache Tika"));
-        assertTrue(content.contains("extract content"));
-        assertTrue(content.contains("an XHTML document"));
+        assertContains("ability of Apache Tika", content);
+        assertContains("extract content", content);
+        assertContains("an XHTML document", content);
     }
 
     @Test
@@ -149,7 +151,7 @@ public class HtmlParserTest {
         ContentHandler handler = new BodyContentHandler();
         new HtmlParser().parse(
                 new ByteArrayInputStream(new byte[0]),
-                handler,  new Metadata(), new ParseContext());
+                handler, new Metadata(), new ParseContext());
         assertEquals("", handler.toString());
     }
 
@@ -161,7 +163,7 @@ public class HtmlParserTest {
     public void testCharactersDirectlyUnderBodyElement() throws Exception {
         String test = "<html><body>test</body></html>";
         String content = new Tika().parseToString(
-                new ByteArrayInputStream(test.getBytes("UTF-8")));
+                new ByteArrayInputStream(test.getBytes(IOUtils.UTF_8)));
         assertEquals("test", content);
     }
 
@@ -218,7 +220,7 @@ public class HtmlParserTest {
             + "<body><a href=\"" + relative + "\">test</a></body></html>";
         final List<String> links = new ArrayList<String>();
         new HtmlParser().parse(
-                new ByteArrayInputStream(test.getBytes("UTF-8")),
+                new ByteArrayInputStream(test.getBytes(IOUtils.UTF_8)),
                 new DefaultHandler() {
                     @Override
                     public void startElement(
@@ -243,9 +245,9 @@ public class HtmlParserTest {
         String test =
             "<html><body><table><tr><td>a</td><td>b</td></table></body></html>";
         String content = new Tika().parseToString(
-                new ByteArrayInputStream(test.getBytes("UTF-8")));
-        assertTrue(content.contains("a"));
-        assertTrue(content.contains("b"));
+                new ByteArrayInputStream(test.getBytes(IOUtils.UTF_8)));
+        assertContains("a", content);
+        assertContains("b", content);
         assertFalse(content.contains("ab"));
     }
 
@@ -261,9 +263,9 @@ public class HtmlParserTest {
             + "<title>the name is \u00e1ndre</title>"
             + "</head><body></body></html>";
         Metadata metadata = new Metadata();
-        new HtmlParser().parse (
+        new HtmlParser().parse(
                 new ByteArrayInputStream(test.getBytes("ISO-8859-1")),
-                new BodyContentHandler(),  metadata, new ParseContext());
+                new BodyContentHandler(), metadata, new ParseContext());
         assertEquals("ISO-8859-1", metadata.get(Metadata.CONTENT_ENCODING));
     }
 
@@ -294,7 +296,7 @@ public class HtmlParserTest {
             "<html><head><title>\u017d</title></head><body></body></html>";
         Metadata metadata = new Metadata();
         new HtmlParser().parse (
-                new ByteArrayInputStream(test.getBytes("UTF-8")),
+                new ByteArrayInputStream(test.getBytes(IOUtils.UTF_8)),
                 new BodyContentHandler(),  metadata, new ParseContext());
         assertEquals("\u017d", metadata.get(TikaCoreProperties.TITLE));
     }
@@ -311,7 +313,7 @@ public class HtmlParserTest {
 
         Metadata metadata = new Metadata();
         new HtmlParser().parse (
-                new ByteArrayInputStream(test.getBytes("UTF-8")),
+                new ByteArrayInputStream(test.getBytes(IOUtils.UTF_8)),
                 new BodyContentHandler(),  metadata, new ParseContext());
         assertEquals("UTF-8", metadata.get(Metadata.CONTENT_ENCODING));
 
@@ -352,9 +354,9 @@ public class HtmlParserTest {
         String test = "<html><title>Simple Content</title><body></body></html>";
         Metadata metadata = new Metadata();
         metadata.add(Metadata.CONTENT_LANGUAGE, "en");
-        new HtmlParser().parse (
-                new ByteArrayInputStream(test.getBytes("UTF-8")),
-                new BodyContentHandler(),  metadata, new ParseContext());
+        new HtmlParser().parse(
+                new ByteArrayInputStream(test.getBytes(IOUtils.UTF_8)),
+                new BodyContentHandler(), metadata, new ParseContext());
 
         assertEquals("en", metadata.get(Metadata.CONTENT_LANGUAGE));
     }
@@ -401,7 +403,7 @@ public class HtmlParserTest {
 
         Metadata metadata = new Metadata();
         new HtmlParser().parse (
-                new ByteArrayInputStream(test.getBytes("UTF-8")),
+                new ByteArrayInputStream(test.getBytes(IOUtils.UTF_8)),
                 new BodyContentHandler(),  metadata, new ParseContext());
         assertEquals("UTF-8", metadata.get(Metadata.CONTENT_ENCODING));
 
@@ -463,7 +465,7 @@ public class HtmlParserTest {
 
         StringWriter sw = new StringWriter();
         new HtmlParser().parse(
-                new ByteArrayInputStream(test.getBytes("UTF-8")),
+                new ByteArrayInputStream(test.getBytes(IOUtils.UTF_8)),
                 makeHtmlTransformer(sw), new Metadata(), new ParseContext());
 
         String result = sw.toString();
@@ -500,7 +502,7 @@ public class HtmlParserTest {
 
         StringWriter sw = new StringWriter();
         new HtmlParser().parse(
-                new ByteArrayInputStream(test.getBytes("UTF-8")),
+                new ByteArrayInputStream(test.getBytes(IOUtils.UTF_8)),
                 makeHtmlTransformer(sw), new Metadata(), new ParseContext());
 
         String result = sw.toString();
@@ -521,7 +523,7 @@ public class HtmlParserTest {
 
         StringWriter sw = new StringWriter();
         new HtmlParser().parse(
-                new ByteArrayInputStream(test.getBytes("UTF-8")),
+                new ByteArrayInputStream(test.getBytes(IOUtils.UTF_8)),
                 makeHtmlTransformer(sw), new Metadata(), new ParseContext());
 
         String result = sw.toString();
@@ -543,7 +545,7 @@ public class HtmlParserTest {
 
         StringWriter sw = new StringWriter();
         new HtmlParser().parse(
-                new ByteArrayInputStream(test.getBytes("UTF-8")),
+                new ByteArrayInputStream(test.getBytes(IOUtils.UTF_8)),
                 makeHtmlTransformer(sw), new Metadata(), new ParseContext());
 
         String result = sw.toString();
@@ -566,7 +568,7 @@ public class HtmlParserTest {
 
         StringWriter sw = new StringWriter();
         new HtmlParser().parse(
-                new ByteArrayInputStream(test.getBytes("UTF-8")),
+                new ByteArrayInputStream(test.getBytes(IOUtils.UTF_8)),
                 makeHtmlTransformer(sw), new Metadata(), new ParseContext());
 
         String result = sw.toString();
@@ -589,7 +591,7 @@ public class HtmlParserTest {
 
         StringWriter sw = new StringWriter();
         new HtmlParser().parse(
-                new ByteArrayInputStream(test.getBytes("UTF-8")),
+                new ByteArrayInputStream(test.getBytes(IOUtils.UTF_8)),
                 makeHtmlTransformer(sw), new Metadata(), new ParseContext());
 
         String result = sw.toString();
@@ -615,7 +617,7 @@ public class HtmlParserTest {
 
         StringWriter sw = new StringWriter();
         new HtmlParser().parse(
-                new ByteArrayInputStream(test.getBytes("UTF-8")),
+                new ByteArrayInputStream(test.getBytes(IOUtils.UTF_8)),
                 makeHtmlTransformer(sw), metadata, new ParseContext());
 
         String result = sw.toString();
@@ -637,7 +639,7 @@ public class HtmlParserTest {
 
         StringWriter sw1 = new StringWriter();
         new HtmlParser().parse(
-                new ByteArrayInputStream(test1.getBytes("UTF-8")),
+                new ByteArrayInputStream(test1.getBytes(IOUtils.UTF_8)),
                 makeHtmlTransformer(sw1), new Metadata(), new ParseContext());
 
         String result = sw1.toString();
@@ -658,7 +660,7 @@ public class HtmlParserTest {
 
         StringWriter sw2 = new StringWriter();
         new HtmlParser().parse(
-                new ByteArrayInputStream(test2.getBytes("UTF-8")),
+                new ByteArrayInputStream(test2.getBytes(IOUtils.UTF_8)),
                 makeHtmlTransformer(sw2), new Metadata(), new ParseContext());
 
         result = sw2.toString();
@@ -710,7 +712,7 @@ public class HtmlParserTest {
 
         StringWriter sw = new StringWriter();
         new HtmlParser().parse(
-                new ByteArrayInputStream(test.getBytes("UTF-8")),
+                new ByteArrayInputStream(test.getBytes(IOUtils.UTF_8)),
                 makeHtmlTransformer(sw), new Metadata(), new ParseContext());
 
         String result = sw.toString();
@@ -792,7 +794,7 @@ public class HtmlParserTest {
         StringWriter sw = new StringWriter();
 
         new HtmlParser().parse (
-                new ByteArrayInputStream(html.getBytes("UTF-8")),
+                new ByteArrayInputStream(html.getBytes(IOUtils.UTF_8)),
                 makeHtmlTransformer(sw),  metadata, parseContext);
 
         String result = sw.toString();
@@ -813,7 +815,7 @@ public class HtmlParserTest {
 
         BodyContentHandler handler = new BodyContentHandler();
         new HtmlParser().parse(
-                new ByteArrayInputStream(html.getBytes("UTF-8")),
+                new ByteArrayInputStream(html.getBytes(IOUtils.UTF_8)),
                 handler,  new Metadata(), new ParseContext());
 
         // Make sure we get <tab>, "one", newline, newline
@@ -846,10 +848,10 @@ public class HtmlParserTest {
         assertFalse(content.contains("item_aitem_b"));
 
         // Should contain the two list items with a newline in between.
-        assertTrue(content.contains("item_a\nitem_b"));
+        assertContains("item_a\nitem_b", content);
 
         // Should contain 有什么需要我帮你的 (can i help you) without whitespace
-        assertTrue(content.contains("有什么需要我帮你的"));
+        assertContains("有什么需要我帮你的", content);
     }
 
     /**
@@ -867,9 +869,9 @@ public class HtmlParserTest {
             + "<title>hello</title>"
             + "</head><body></body></html>";
         Metadata metadata = new Metadata();
-        new HtmlParser().parse (
+        new HtmlParser().parse(
                 new ByteArrayInputStream(test1.getBytes("ISO-8859-1")),
-                new BodyContentHandler(),  metadata, new ParseContext());
+                new BodyContentHandler(), metadata, new ParseContext());
         assertEquals("some description", metadata.get("og:description"));
         assertTrue(metadata.isMultiValued("og:image"));
     }
@@ -993,7 +995,96 @@ public class HtmlParserTest {
         // The text occurs at line 24 (if lines start at 0) or 25 (if lines start at 1).
         assertEquals(24, textPosition[line]);
         // The column reported seems fuzzy, just test it is close enough.
-        assertTrue(Math.abs(textPosition[col]-47) < 10);
+        assertTrue(Math.abs(textPosition[col] - 47) < 10);
     }
     
+    
+     /**
+     * Test case for TIKA-1303: HTML parse should use the first title tag to set value in meta data 
+     * and ignore any subsequent title tags found in HTML.
+     * 
+     * @see <a href="https://issues.apache.org/jira/browse/TIKA-1303">TIKA-1303</a>
+     */
+    @Test
+    public void testFirstTitleValueisSetToMetadata() throws Exception{
+        String test = "<html><title>Simple Content</title><body><h1></h1>"
+        		+ "<title>TitleToIgnore</title></body></html>";
+        Metadata metadata = new Metadata();
+        
+        new HtmlParser().parse(
+                new ByteArrayInputStream(test.getBytes(IOUtils.UTF_8)),
+                new BodyContentHandler(), metadata, new ParseContext());
+
+        //Expecting first title to be set in meta data and second one to be ignored.
+        assertEquals("Simple Content", metadata.get(TikaCoreProperties.TITLE));
+    }
+
+    @Test
+    public void testMisleadingMetaContentTypeTags() throws Exception {
+        //TIKA-1519
+
+        String test = "<html><head><meta http-equiv=\"content-type\" content=\"text/html; charset=UTF-ELEVEN\">"+
+                "</head><title>title</title><body>body</body></html>";
+        Metadata metadata = new Metadata();
+
+        new HtmlParser().parse(
+                new ByteArrayInputStream(test.getBytes(IOUtils.UTF_8)),
+                new BodyContentHandler(), metadata, new ParseContext());
+        assertEquals("text/html; charset=UTF-ELEVEN", metadata.get(TikaCoreProperties.CONTENT_TYPE_HINT));
+        assertEquals("text/html; charset=ISO-8859-1", metadata.get(Metadata.CONTENT_TYPE));
+
+        test = "<html><head><meta http-equiv=\"content-type\" content=\"application/pdf\">"+
+                "</head><title>title</title><body>body</body></html>";
+        metadata = new Metadata();
+
+        new HtmlParser().parse(
+                new ByteArrayInputStream(test.getBytes(IOUtils.UTF_8)),
+                new BodyContentHandler(), metadata, new ParseContext());
+        assertEquals("application/pdf", metadata.get(TikaCoreProperties.CONTENT_TYPE_HINT));
+        assertEquals("text/html; charset=ISO-8859-1", metadata.get(Metadata.CONTENT_TYPE));
+
+        //test two content values
+        test = "<html><head><meta http-equiv=\"content-type\" content=\"application/pdf\" content=\"application/ms-word\">"+
+                "</head><title>title</title><body>body</body></html>";
+        metadata = new Metadata();
+
+        new HtmlParser().parse(
+                new ByteArrayInputStream(test.getBytes(IOUtils.UTF_8)),
+                new BodyContentHandler(), metadata, new ParseContext());
+        assertEquals("application/ms-word", metadata.get(TikaCoreProperties.CONTENT_TYPE_HINT));
+        assertEquals("text/html; charset=ISO-8859-1", metadata.get(Metadata.CONTENT_TYPE));
+    }
+
+    @Test
+    public void testXHTMLWithMisleading() throws Exception {
+        //first test an acceptable XHTML header with http-equiv tags
+        String test = "<?xml version=\"1.0\" ?>"+
+                "<!DOCTYPE html PUBLIC \"-//W3C//DTD XHTML 1.0 Transitional//EN\" \"http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd\">\n" +
+                "<html xmlns=\"http://www.w3.org/1999/xhtml\">\n" +
+                "<head>\n" +
+                "<meta http-equiv=\"Content-Type\" content=\"text/html; charset=iso-8859-1\" />\n" +
+                "<title>title</title></head><body>body</body></html>";
+        Metadata metadata = new Metadata();
+        new AutoDetectParser().parse(
+                new ByteArrayInputStream(test.getBytes(IOUtils.UTF_8)),
+                new BodyContentHandler(), metadata, new ParseContext());
+
+        assertEquals("text/html; charset=iso-8859-1", metadata.get(TikaCoreProperties.CONTENT_TYPE_HINT));
+        assertEquals("application/xhtml+xml; charset=ISO-8859-1", metadata.get(Metadata.CONTENT_TYPE));
+
+        test = "<?xml version=\"1.0\" ?>"+
+                "<!DOCTYPE html PUBLIC \"-//W3C//DTD XHTML 1.0 Transitional//EN\" \"http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd\">\n" +
+                "<html xmlns=\"http://www.w3.org/1999/xhtml\">\n" +
+                "<head>\n" +
+                "<meta http-equiv=\"Content-Type\" content=\"text/html; charset=iso-NUMBER_SEVEN\" />\n" +
+                "<title>title</title></head><body>body</body></html>";
+        metadata = new Metadata();
+        new AutoDetectParser().parse(
+                new ByteArrayInputStream(test.getBytes(IOUtils.UTF_8)),
+                new BodyContentHandler(), metadata, new ParseContext());
+
+        assertEquals("text/html; charset=iso-NUMBER_SEVEN", metadata.get(TikaCoreProperties.CONTENT_TYPE_HINT));
+        assertEquals("application/xhtml+xml; charset=ISO-8859-1", metadata.get(Metadata.CONTENT_TYPE));
+
+    }
 }

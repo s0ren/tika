@@ -77,8 +77,8 @@ public class TikaDetectionTest {
         assertEquals("application/octet-stream", tika.detect("x.lrf"));
         assertEquals("application/octet-stream", tika.detect("x.lzh"));
         assertEquals("application/octet-stream", tika.detect("x.so"));
-        assertEquals("application/octet-stream", tika.detect("x.iso"));
-        assertEquals("application/octet-stream", tika.detect("x.dmg"));
+        assertEquals("application/x-iso9660-image", tika.detect("x.iso"));
+        assertEquals("application/x-apple-diskimage", tika.detect("x.dmg"));
         assertEquals("application/octet-stream", tika.detect("x.dist"));
         assertEquals("application/octet-stream", tika.detect("x.distz"));
         assertEquals("application/octet-stream", tika.detect("x.pkg"));
@@ -584,7 +584,8 @@ public class TikaDetectionTest {
         assertEquals("application/x-msdownload", tika.detect("x.dll"));
         assertEquals("application/x-msdownload", tika.detect("x.com"));
         assertEquals("application/x-msdownload", tika.detect("x.bat"));
-        assertEquals("application/x-msdownload", tika.detect("x.msi"));
+        // Differ from httpd - MSI is different from normal windows executables
+        //assertEquals("application/x-msdownload", tika.detect("x.msi"));
         assertEquals("application/x-msmediaview", tika.detect("x.mvb"));
         assertEquals("application/x-msmediaview", tika.detect("x.m13"));
         assertEquals("application/x-msmediaview", tika.detect("x.m14"));
@@ -651,8 +652,10 @@ public class TikaDetectionTest {
         assertEquals("audio/mpeg", tika.detect("x.m2a"));
         assertEquals("audio/mpeg", tika.detect("x.m3a"));
         assertEquals("audio/ogg", tika.detect("x.oga"));
-        assertEquals("audio/ogg", tika.detect("x.ogg"));
-        assertEquals("audio/ogg", tika.detect("x.spx"));
+        // Differ from httpd - Use a dedicated mimetype of Vorbis
+        //assertEquals("audio/ogg", tika.detect("x.ogg"));
+        // Differ from httpd - Speex more commonly uses its own mimetype
+        //assertEquals("audio/ogg", tika.detect("x.spx"));
         assertEquals("audio/vnd.digital-winds", tika.detect("x.eol"));
         assertEquals("audio/vnd.dts", tika.detect("x.dts"));
         assertEquals("audio/vnd.dts.hd", tika.detect("x.dtshd"));
@@ -838,6 +841,11 @@ public class TikaDetectionTest {
         assertEquals("video/x-msvideo", tika.detect("x.avi"));
         assertEquals("video/x-sgi-movie", tika.detect("x.movie"));
         assertEquals("x-conference/x-cooltalk", tika.detect("x.ice"));
+
+        assertEquals("application/x-grib", tika.detect("x.grb"));
+        assertEquals("application/x-grib", tika.detect("x.grb1"));
+        assertEquals("application/x-grib", tika.detect("x.grb2"));
+        assertEquals("text/dif+xml", tika.detect("x.dif"));
     }
 
 }

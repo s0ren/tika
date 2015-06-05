@@ -16,28 +16,6 @@
  */
 package org.apache.tika.gui;
 
-import java.awt.CardLayout;
-import java.awt.Color;
-import java.awt.Dimension;
-import java.awt.Toolkit;
-import java.awt.event.ActionEvent;
-import java.awt.event.ActionListener;
-import java.awt.event.KeyEvent;
-import java.awt.event.WindowEvent;
-import java.io.File;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.PrintWriter;
-import java.io.StringWriter;
-import java.io.Writer;
-import java.net.MalformedURLException;
-import java.net.URL;
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Set;
-
 import javax.swing.Box;
 import javax.swing.JDialog;
 import javax.swing.JEditorPane;
@@ -61,18 +39,43 @@ import javax.xml.transform.TransformerConfigurationException;
 import javax.xml.transform.sax.SAXTransformerFactory;
 import javax.xml.transform.sax.TransformerHandler;
 import javax.xml.transform.stream.StreamResult;
+import java.awt.CardLayout;
+import java.awt.Color;
+import java.awt.Dimension;
+import java.awt.Toolkit;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
+import java.awt.event.KeyEvent;
+import java.awt.event.WindowEvent;
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.PrintWriter;
+import java.io.StringWriter;
+import java.io.Writer;
+import java.net.MalformedURLException;
+import java.net.URL;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Set;
 
+import org.apache.tika.config.TikaConfig;
 import org.apache.tika.exception.TikaException;
 import org.apache.tika.extractor.DocumentSelector;
 import org.apache.tika.io.IOUtils;
 import org.apache.tika.io.TikaInputStream;
 import org.apache.tika.metadata.Metadata;
+import org.apache.tika.metadata.serialization.JsonMetadataList;
 import org.apache.tika.mime.MediaType;
 import org.apache.tika.parser.AbstractParser;
 import org.apache.tika.parser.AutoDetectParser;
 import org.apache.tika.parser.ParseContext;
 import org.apache.tika.parser.Parser;
+import org.apache.tika.parser.RecursiveParserWrapper;
 import org.apache.tika.parser.html.BoilerpipeContentHandler;
+import org.apache.tika.sax.BasicContentHandlerFactory;
 import org.apache.tika.sax.BodyContentHandler;
 import org.apache.tika.sax.ContentHandlerDecorator;
 import org.apache.tika.sax.TeeContentHandler;
@@ -103,14 +106,22 @@ public class TikaGUI extends JFrame
      * @throws Exception if an error occurs
      */
     public static void main(String[] args) throws Exception {
+        TikaConfig config = TikaConfig.getDefaultConfig();
+        if (args.length > 0) {
+            File configFile = new File(args[0]);
+            config = new TikaConfig(configFile);
+        }
         UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName());
+        final TikaConfig finalConfig = config;
         SwingUtilities.invokeLater(new Runnable() {
             public void run() {
-                new TikaGUI(new AutoDetectParser()).setVisible(true);
+                new TikaGUI(new AutoDetectParser(finalConfig)).setVisible(true);
             }
         });
     }
 
+    //maximum length to allow for mark for reparse to get JSON
+    private final int MAX_MARK = 20*1024*1024;//20MB
     /**
      * Parsing context.
      */
@@ -157,6 +168,11 @@ public class TikaGUI extends JFrame
     private final JEditorPane xml;
 
     /**
+     * Raw JSON source.
+     */
+    private final JEditorPane json;
+
+    /**
      * Document metadata.
      */
     private final JEditorPane metadata;
@@ -179,6 +195,7 @@ public class TikaGUI extends JFrame
         text = addCard(cards, "text/plain", "text");
         textMain = addCard(cards, "text/plain", "main");
         xml = addCard(cards, "text/plain", "xhtml");
+        json = addCard(cards, "text/plain", "json");
         add(cards);
         layout.show(cards, "welcome");
 
@@ -211,6 +228,7 @@ public class TikaGUI extends JFrame
         addMenuItem(view, "Plain text", "text", KeyEvent.VK_P);
         addMenuItem(view, "Main content", "main", KeyEvent.VK_C);
         addMenuItem(view, "Structured text", "xhtml", KeyEvent.VK_S);
+        addMenuItem(view, "Recursive JSON", "json", KeyEvent.VK_J);
         bar.add(view);
 
         bar.add(Box.createHorizontalGlue());
@@ -260,6 +278,8 @@ public class TikaGUI extends JFrame
         } else if ("xhtml".equals(command)) {
             layout.show(cards, command);
         } else if ("metadata".equals(command)) {
+            layout.show(cards, command);
+        } else if ("json".equals(command)) {
             layout.show(cards, command);
         } else if ("about".equals(command)) {
             textDialog(
@@ -314,7 +334,9 @@ public class TikaGUI extends JFrame
                 getXmlContentHandler(xmlBuffer));
 
         context.set(DocumentSelector.class, new ImageDocumentSelector());
-
+        if (input.markSupported()) {
+            input.mark(MAX_MARK);
+        }
         input = new ProgressMonitorInputStream(
                 this, "Parsing stream", input);
         parser.parse(input, handler, md, context);
@@ -340,6 +362,31 @@ public class TikaGUI extends JFrame
         setText(text, textBuffer.toString());
         setText(textMain, textMainBuffer.toString());
         setText(html, htmlBuffer.toString());
+        if (!input.markSupported()) {
+            setText(json, "InputStream does not support mark/reset for Recursive Parsing");
+            layout.show(cards, "metadata");
+            return;
+        }
+        boolean isReset = false;
+        try {
+            input.reset();
+            isReset = true;
+        } catch (IOException e) {
+            setText(json, "Error during stream reset.\n"+
+                    "There's a limit of "+MAX_MARK + " bytes for this type of processing in the GUI.\n"+
+                    "Try the app with command line argument of -J."
+            );
+        }
+        if (isReset) {
+            RecursiveParserWrapper wrapper = new RecursiveParserWrapper(parser,
+                    new BasicContentHandlerFactory(
+                            BasicContentHandlerFactory.HANDLER_TYPE.BODY, -1));
+            wrapper.parse(input, null, new Metadata(), new ParseContext());
+            StringWriter jsonBuffer = new StringWriter();
+            JsonMetadataList.setPrettyPrinting(true);
+            JsonMetadataList.toJson(wrapper.getMetadata(), jsonBuffer);
+            setText(json, jsonBuffer.toString());
+        }
         layout.show(cards, "metadata");
     }
 
@@ -412,7 +459,7 @@ public class TikaGUI extends JFrame
                 InputStream stream = url.openStream();
                 try {
                     StringWriter writer = new StringWriter();
-                    IOUtils.copy(stream, writer, "UTF-8");
+                    IOUtils.copy(stream, writer, IOUtils.UTF_8.name());
 
                     JEditorPane editor =
                         new JEditorPane("text/plain", writer.toString());

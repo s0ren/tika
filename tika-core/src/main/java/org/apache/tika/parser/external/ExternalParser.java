@@ -231,7 +231,7 @@ public class ExternalParser extends AbstractParser {
      */
     private void extractOutput(InputStream stream, XHTMLContentHandler xhtml)
             throws SAXException, IOException {
-        Reader reader = new InputStreamReader(stream);
+        Reader reader = new InputStreamReader(stream, IOUtils.UTF_8);
         try {
             xhtml.startDocument();
             xhtml.startElement("p");
@@ -291,18 +291,26 @@ public class ExternalParser extends AbstractParser {
     private void extractMetadata(final InputStream stream, final Metadata metadata) {
        new Thread() {
           public void run() {
-             BufferedReader reader = new BufferedReader(new InputStreamReader(stream));
+             BufferedReader reader;
+              reader = new BufferedReader(new InputStreamReader(stream, IOUtils.UTF_8));
              try {
                 String line;
                 while ( (line = reader.readLine()) != null ) {
                    for(Pattern p : metadataPatterns.keySet()) {
                       Matcher m = p.matcher(line);
                       if(m.find()) {
-                         metadata.add( metadataPatterns.get(p), m.group(1) );
+                    	 if (metadataPatterns.get(p) != null && 
+                    			 !metadataPatterns.get(p).equals("")){
+                                   metadata.add( metadataPatterns.get(p), m.group(1) );
+                    	 }
+                    	 else{
+                    		 metadata.add( m.group(1), m.group(2));
+                    	 }
                       }
                    }
                 }
              } catch (IOException e) {
+                 // Ignore
              } finally {
                 IOUtils.closeQuietly(reader);
                 IOUtils.closeQuietly(stream);
@@ -322,18 +330,14 @@ public class ExternalParser extends AbstractParser {
     public static boolean check(String checkCmd, int... errorValue) {
        return check(new String[] {checkCmd}, errorValue);
     }
+
     public static boolean check(String[] checkCmd, int... errorValue) {
        if(errorValue.length == 0) {
           errorValue = new int[] { 127 };
        }
        
        try {
-          Process process;
-          if(checkCmd.length == 1) {
-             process = Runtime.getRuntime().exec(checkCmd[0]);
-          } else {
-             process = Runtime.getRuntime().exec(checkCmd);
-          }
+          Process process= Runtime.getRuntime().exec(checkCmd);
           int result = process.waitFor();
           
           for(int err : errorValue) {
@@ -346,6 +350,16 @@ public class ExternalParser extends AbstractParser {
        } catch (InterruptedException ie) {
           // Some problem, command is there or is broken
           return false;
-      }
+       } catch (Error err) {
+           if (err.getMessage() != null && 
+               (err.getMessage().contains("posix_spawn") || 
+               err.getMessage().contains("UNIXProcess"))) {
+               //"Error forking command due to JVM locale bug 
+               //(see TIKA-1526 and SOLR-6387)"
+               return false;
+           }
+           //throw if a different kind of error
+           throw err;
+       }
     }
 }

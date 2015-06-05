@@ -24,7 +24,7 @@ import java.util.Date;
  * properties defined in the XMP standard.
  *
  * @since Apache Tika 0.7
- * @see <a href="http://www.adobe.com/devnet/xmp/pdfs/XMPSpecificationPart2.pdf"
+ * @see <a href="http://wwwimages.adobe.com/content/dam/Adobe/en/devnet/xmp/pdfs/cc-201306/XMPSpecificationPart2.pdf"
  *        >XMP Specification, Part 2: Standard Schemas</a>
  */
 public interface XMPDM {
@@ -58,6 +58,11 @@ public interface XMPDM {
      * "The name of the artist or artists."
      */
     Property ARTIST = Property.externalText("xmpDM:artist");
+
+    /**
+     * "The name of the album artist or group for compilation albums."
+     */
+    Property ALBUM_ARTIST = Property.externalText("xmpDM:albumArtist");
 
     /**
      * "The date and time when the audio was last modified."
@@ -142,6 +147,11 @@ public interface XMPDM {
 //    Property BEAT_SPLICE_PARAMS = "xmpDM:beatSpliceParams";
 
     /**
+     * "An album created by various artists."
+     */
+    Property COMPILATION = Property.externalInteger("xmpDM:compilation");
+
+    /**
      * "The composer's name."
      */
     Property COMPOSER = Property.externalText("xmpDM:composer");
@@ -155,6 +165,11 @@ public interface XMPDM {
      * "The copyright information."
      */
     Property COPYRIGHT = Property.externalText("xmpDM:copyright");
+
+    /**
+     * "The disc number for part of an album set."
+     */
+    Property DISC_NUMBER = Property.externalInteger("xmpDM:discNumber");
 
     /**
      * "The duration of the media file."

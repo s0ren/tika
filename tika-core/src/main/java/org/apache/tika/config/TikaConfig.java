@@ -20,8 +20,12 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.lang.reflect.Constructor;
+import java.lang.reflect.InvocationTargetException;
 import java.net.URL;
 import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -35,6 +39,8 @@ import org.apache.tika.detect.CompositeDetector;
 import org.apache.tika.detect.DefaultDetector;
 import org.apache.tika.detect.Detector;
 import org.apache.tika.exception.TikaException;
+import org.apache.tika.language.translate.DefaultTranslator;
+import org.apache.tika.language.translate.Translator;
 import org.apache.tika.mime.MediaType;
 import org.apache.tika.mime.MediaTypeRegistry;
 import org.apache.tika.mime.MimeTypeException;
@@ -70,8 +76,12 @@ public class TikaConfig {
         return new DefaultParser(types.getMediaTypeRegistry(), loader);
     }
 
+    private static Translator getDefaultTranslator(ServiceLoader loader) {
+        return new DefaultTranslator(loader);
+    }
     private final CompositeParser parser;
     private final Detector detector;
+    private final Translator translator;
 
     private final MimeTypes mimeTypes;
 
@@ -118,6 +128,7 @@ public class TikaConfig {
         this.mimeTypes = typesFromDomElement(element);
         this.detector = detectorFromDomElement(element, mimeTypes, loader);
         this.parser = parserFromDomElement(element, mimeTypes, loader);
+        this.translator = translatorFromDomElement(element, loader);
     }
 
     /**
@@ -138,6 +149,7 @@ public class TikaConfig {
         this.mimeTypes = getDefaultMimeTypes(loader);
         this.detector = getDefaultDetector(mimeTypes, serviceLoader);
         this.parser = getDefaultParser(mimeTypes, serviceLoader);
+        this.translator = getDefaultTranslator(serviceLoader);
     }
 
     /**
@@ -169,6 +181,7 @@ public class TikaConfig {
             this.mimeTypes = getDefaultMimeTypes(ServiceLoader.getContextClassLoader());
             this.parser = getDefaultParser(mimeTypes, loader);
             this.detector = getDefaultDetector(mimeTypes, loader);
+            this.translator = getDefaultTranslator(loader);
         } else {
             // Locate the given configuration file
             InputStream stream = null;
@@ -198,6 +211,7 @@ public class TikaConfig {
                         parserFromDomElement(element, mimeTypes, loader);
                 this.detector =
                         detectorFromDomElement(element, mimeTypes, loader);
+                this.translator = translatorFromDomElement(element, loader);
             } catch (SAXException e) {
                 throw new TikaException(
                         "Specified Tika configuration has syntax errors: "
@@ -246,6 +260,15 @@ public class TikaConfig {
      */
     public Detector getDetector() {
         return detector;
+    }
+
+    /**
+     * Returns the configured translator instance.
+     *
+     * @return configured translator
+     */
+    public Translator getTranslator() {
+        return translator;
     }
 
     public MimeTypes getMimeRepository(){
@@ -312,53 +335,131 @@ public class TikaConfig {
         NodeList nodes = element.getElementsByTagName("parser");
         for (int i = 0; i < nodes.getLength(); i++) {
             Element node = (Element) nodes.item(i);
-            String name = node.getAttribute("class");
-
-            try {
-                Class<? extends Parser> parserClass =
-                        loader.getServiceClass(Parser.class, name);
-                // https://issues.apache.org/jira/browse/TIKA-866
-                if (AutoDetectParser.class.isAssignableFrom(parserClass)) {
-                    throw new TikaException(
-                            "AutoDetectParser not supported in a <parser>"
-                            + " configuration element: " + name);
-                }
-                Parser parser = parserClass.newInstance();
-
-                NodeList mimes = node.getElementsByTagName("mime");
-                if (mimes.getLength() > 0) {
-                    Set<MediaType> types = new HashSet<MediaType>();
-                    for (int j = 0; j < mimes.getLength(); j++) {
-                        String mime = getText(mimes.item(j));
-                        MediaType type = MediaType.parse(mime);
-                        if (type != null) {
-                            types.add(type);
-                        } else {
-                            throw new TikaException(
-                                    "Invalid media type name: " + mime);
-                        }
-                    }
-                    parser = ParserDecorator.withTypes(parser, types);
-                }
-
-                parsers.add(parser);
-            } catch (ClassNotFoundException e) {
-                throw new TikaException(
-                        "Unable to find a parser class: " + name, e);
-            } catch (IllegalAccessException e) {
-                throw new TikaException(
-                        "Unable to access a parser class: " + name, e);
-            } catch (InstantiationException e) {
-                throw new TikaException(
-                        "Unable to instantiate a parser class: " + name, e);
-            }
+            parsers.add(parserFromParserDomElement(node, mimeTypes, loader));
         }
+        
         if (parsers.isEmpty()) {
+            // No parsers defined, create a DefaultParser
             return getDefaultParser(mimeTypes, loader);
+        } else if (parsers.size() == 1 && parsers.get(0) instanceof CompositeParser) {
+            // Single Composite defined, use that
+            return (CompositeParser)parsers.get(0);
         } else {
+            // Wrap the defined parsers up in a Composite
             MediaTypeRegistry registry = mimeTypes.getMediaTypeRegistry();
             return new CompositeParser(registry, parsers);
         }
+    }
+    private static Parser parserFromParserDomElement(
+            Element parserNode, MimeTypes mimeTypes, ServiceLoader loader)
+            throws TikaException, IOException {
+        String name = parserNode.getAttribute("class");
+        Parser parser = null;
+
+        try {
+            Class<? extends Parser> parserClass =
+                    loader.getServiceClass(Parser.class, name);
+            // https://issues.apache.org/jira/browse/TIKA-866
+            if (AutoDetectParser.class.isAssignableFrom(parserClass)) {
+                throw new TikaException(
+                        "AutoDetectParser not supported in a <parser>"
+                        + " configuration element: " + name);
+            }
+
+            // Is this a composite parser? If so, support recursion
+            if (CompositeParser.class.isAssignableFrom(parserClass)) {
+                // Get the child parsers for it
+                List<Parser> childParsers = new ArrayList<Parser>();
+                NodeList childParserNodes = parserNode.getElementsByTagName("parser");
+                if (childParserNodes.getLength() > 0) {
+                    for (int i = 0; i < childParserNodes.getLength(); i++) {
+                        childParsers.add(parserFromParserDomElement(
+                                (Element)childParserNodes.item(i), mimeTypes, loader
+                        ));
+                    }
+                }
+                
+                // Get the list of parsers to exclude
+                Set<Class<? extends Parser>> excludeParsers = new HashSet<Class<? extends Parser>>();
+                NodeList excludeParserNodes = parserNode.getElementsByTagName("parser-exclude");
+                if (excludeParserNodes.getLength() > 0) {
+                    for (int i = 0; i < excludeParserNodes.getLength(); i++) {
+                        Element excl = (Element)excludeParserNodes.item(i);
+                        String exclName = excl.getAttribute("class");
+                        excludeParsers.add(loader.getServiceClass(Parser.class, exclName));
+                    }
+                }
+                
+                // Create the Composite Parser
+                Constructor<? extends Parser> c = null;
+                if (c == null) {
+                    try {
+                        c = parserClass.getConstructor(MediaTypeRegistry.class, ServiceLoader.class, Collection.class);
+                        parser = c.newInstance(mimeTypes.getMediaTypeRegistry(), loader, excludeParsers);
+                    } 
+                    catch (NoSuchMethodException me) {}
+                }
+                if (c == null) {
+                    try {
+                        c = parserClass.getConstructor(MediaTypeRegistry.class, List.class, Collection.class);
+                        parser = c.newInstance(mimeTypes.getMediaTypeRegistry(), childParsers, excludeParsers);
+                    } catch (NoSuchMethodException me) {}
+                }
+                if (c == null) {
+                    parser = parserClass.newInstance();
+                }
+            } else {
+                // Regular parser, create as-is
+                parser = parserClass.newInstance();
+            }
+
+            // Is there an explicit list of mime types for this to handle?
+            Set<MediaType> parserTypes = mediaTypesListFromDomElement(parserNode, "mime");
+            if (! parserTypes.isEmpty()) {
+                parser = ParserDecorator.withTypes(parser, parserTypes);
+            }
+            // Is there an explicit list of mime types this shouldn't handle?
+            Set<MediaType> parserExclTypes = mediaTypesListFromDomElement(parserNode, "mime-exclude");
+            if (! parserExclTypes.isEmpty()) {
+                parser = ParserDecorator.withoutTypes(parser, parserExclTypes);
+            }
+            
+            // All done with setup
+            return parser;
+        } catch (ClassNotFoundException e) {
+            throw new TikaException(
+                    "Unable to find a parser class: " + name, e);
+        } catch (IllegalAccessException e) {
+            throw new TikaException(
+                    "Unable to access a parser class: " + name, e);
+        } catch (InvocationTargetException e) {
+            throw new TikaException(
+                    "Unable to create a parser class: " + name, e);
+        } catch (InstantiationException e) {
+            throw new TikaException(
+                    "Unable to instantiate a parser class: " + name, e);
+        }
+    }
+    
+    private static Set<MediaType> mediaTypesListFromDomElement(
+            Element node, String tag) 
+            throws TikaException, IOException {
+        NodeList mimes = node.getElementsByTagName(tag);
+        if (mimes.getLength() > 0) {
+            Set<MediaType> types = new HashSet<MediaType>();
+            for (int j = 0; j < mimes.getLength(); j++) {
+                String mime = getText(mimes.item(j));
+                MediaType type = MediaType.parse(mime);
+                if (type != null) {
+                    types.add(type);
+                } else {
+                    throw new TikaException(
+                            "Invalid media type name: " + mime);
+                }
+            }
+            return types;
+        }
+        return Collections.emptySet();
     }
 
     private static Detector detectorFromDomElement(
@@ -391,5 +492,36 @@ public class TikaConfig {
            MediaTypeRegistry registry = mimeTypes.getMediaTypeRegistry();
            return new CompositeDetector(registry, detectors);
        }
+    }
+
+    private static Translator translatorFromDomElement(
+            Element element, ServiceLoader loader)
+            throws TikaException, IOException {
+        List<Translator> translators = new ArrayList<Translator>();
+        NodeList nodes = element.getElementsByTagName("translator");
+        for (int i = 0; i < nodes.getLength(); i++) {
+            Element node = (Element) nodes.item(i);
+            String name = node.getAttribute("class");
+
+            try {
+                Class<? extends Translator> translatorClass =
+                        loader.getServiceClass(Translator.class, name);
+                translators.add(translatorClass.newInstance());
+            } catch (ClassNotFoundException e) {
+                throw new TikaException(
+                        "Unable to find a translator class: " + name, e);
+            } catch (IllegalAccessException e) {
+                throw new TikaException(
+                        "Unable to access a translator class: " + name, e);
+            } catch (InstantiationException e) {
+                throw new TikaException(
+                        "Unable to instantiate a translator class: " + name, e);
+            }
+        }
+        if (translators.isEmpty()) {
+            return getDefaultTranslator(loader);
+        } else {
+            return translators.get(0);
+        }
     }
 }

@@ -47,12 +47,16 @@ public class HtmlParser extends AbstractParser {
     /** Serial version UID */
     private static final long serialVersionUID = 7895315240498733128L;
 
+    private static final MediaType XHTML = MediaType.application("xhtml+xml");
+    private static final MediaType WAP_XHTML = MediaType.application("vnd.wap.xhtml+xml");
+    private static final MediaType X_ASP = MediaType.application("x-asp");
+
     private static final Set<MediaType> SUPPORTED_TYPES =
         Collections.unmodifiableSet(new HashSet<MediaType>(Arrays.asList(
                 MediaType.text("html"),
-                MediaType.application("xhtml+xml"),
-                MediaType.application("vnd.wap.xhtml+xml"),
-                MediaType.application("x-asp"))));
+                XHTML,
+                WAP_XHTML,
+                X_ASP)));
 
     private static final ServiceLoader LOADER =
             new ServiceLoader(HtmlParser.class.getClassLoader());
@@ -62,29 +66,6 @@ public class HtmlParser extends AbstractParser {
      */
     private static final Schema HTML_SCHEMA = new HTMLSchema();
 
-    public HtmlParser() {
-        super();
-
-        // Have meta reported everywhere, also in the body
-        HTML_SCHEMA.elementType("meta", HTMLSchema.M_EMPTY, 65535, 0);
-
-        // https://issues.apache.org/jira/browse/TIKA-985
-        String html5Elements[] = { "article", "aside", "audio", "bdi",
-          "command", "datalist", "details", "embed", "summary", "figure",
-          "figcaption", "footer", "header", "hgroup", "keygen", "mark",
-          "meter", "nav", "output", "progress", "section", "source", "time",
-          "track", "video" };
-
-        for (String html5Element : html5Elements) {
-          HTML_SCHEMA.elementType(html5Element, HTMLSchema.M_ANY, 255, 0);
-        }
-        HTML_SCHEMA.elementType("h1", HTMLSchema.M_EMPTY, 65535, 0);
-        HTML_SCHEMA.elementType("h2", HTMLSchema.M_EMPTY, 65535, 0);
-        HTML_SCHEMA.elementType("h3", HTMLSchema.M_EMPTY, 65535, 0);
-        HTML_SCHEMA.elementType("h4", HTMLSchema.M_EMPTY, 65535, 0);
-        HTML_SCHEMA.elementType("h5", HTMLSchema.M_EMPTY, 65535, 0);
-        HTML_SCHEMA.elementType("h6", HTMLSchema.M_EMPTY, 65535, 0);
-    }
 
     public Set<MediaType> getSupportedTypes(ParseContext context) {
         return SUPPORTED_TYPES;
@@ -101,9 +82,18 @@ public class HtmlParser extends AbstractParser {
         try {
             Charset charset = reader.getCharset();
             String previous = metadata.get(Metadata.CONTENT_TYPE);
+            MediaType contentType = null;
             if (previous == null || previous.startsWith("text/html")) {
-                MediaType type = new MediaType(MediaType.TEXT_HTML, charset);
-                metadata.set(Metadata.CONTENT_TYPE, type.toString());
+                contentType = new MediaType(MediaType.TEXT_HTML, charset);
+            } else if (previous.startsWith("application/xhtml+xml")) {
+                contentType = new MediaType(XHTML, charset);
+            } else if (previous.startsWith("application/vnd.wap.xhtml+xml")) {
+                contentType = new MediaType(WAP_XHTML, charset);
+            } else if (previous.startsWith("application/x-asp")) {
+                contentType = new MediaType(X_ASP, charset);
+            }
+            if (contentType != null) {
+                metadata.set(Metadata.CONTENT_TYPE, contentType.toString());
             }
             // deprecated, see TIKA-431
             metadata.set(Metadata.CONTENT_ENCODING, charset.name());
@@ -150,7 +140,7 @@ public class HtmlParser extends AbstractParser {
      * @since Apache Tika 0.5
      * @param name HTML element name (upper case)
      * @return XHTML element name (lower case), or
-     *         <code>null</code> if the element is unsafe
+     *         <code>null</code> if the element is unsafe 
      */
     protected String mapSafeElement(String name) {
         return DefaultHtmlMapper.INSTANCE.mapSafeElement(name);
@@ -177,9 +167,9 @@ public class HtmlParser extends AbstractParser {
     *             the HTML mapping. This method will be removed in Tika 1.0.
     **/
     public String mapSafeAttribute(String elementName, String attributeName) {
-        return DefaultHtmlMapper.INSTANCE.mapSafeAttribute(elementName,attributeName) ;
-    }
-
+        return DefaultHtmlMapper.INSTANCE.mapSafeAttribute(elementName, attributeName) ;
+    }    
+    
     /**
      * Adapter class that maintains backwards compatibility with the
      * protected HtmlParser methods. Making HtmlParser implement HtmlMapper

@@ -19,6 +19,7 @@ package org.apache.tika.parser.chm;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
+import org.apache.tika.io.IOUtils;
 import org.apache.tika.parser.chm.accessor.ChmPmglHeader;
 import org.apache.tika.parser.chm.core.ChmCommons;
 import org.apache.tika.parser.chm.core.ChmConstants;
@@ -46,7 +47,7 @@ public class TestPmglHeader {
     @Test
     public void testChmPmglHeaderGet() {
         assertEquals(TestParameters.VP_PMGL_SIGNATURE, new String(
-                chmPmglHeader.getSignature()));
+                chmPmglHeader.getSignature(), IOUtils.UTF_8));
     }
 
     @Test

@@ -17,11 +17,7 @@
 package org.apache.tika.parser.netcdf;
 
 //JDK imports
-import static org.junit.Assert.assertEquals;
-
 import java.io.InputStream;
-
-
 
 //TIKA imports
 import org.apache.tika.metadata.Metadata;
@@ -32,18 +28,16 @@ import org.apache.tika.sax.BodyContentHandler;
 import org.junit.Test;
 import org.xml.sax.ContentHandler;
 
+import static org.apache.tika.TikaTest.assertContains;
+import static org.junit.Assert.assertEquals;
+
 /**
  * Test cases to exercise the {@link NetCDFParser}.
- * 
  */
 public class NetCDFParserTest {
 
     @Test
     public void testParseGlobalMetadata() throws Exception {
-        if(System.getProperty("java.version").startsWith("1.5")) {
-            return;
-        }
-
         Parser parser = new NetCDFParser();
         ContentHandler handler = new BodyContentHandler();
         Metadata metadata = new Metadata();
@@ -65,6 +59,17 @@ public class NetCDFParserTest {
         assertEquals(metadata.get(Metadata.REALIZATION), "1");
         assertEquals(metadata.get(Metadata.EXPERIMENT_ID),
                 "720 ppm stabilization experiment (SRESA1B)");
+        assertEquals(metadata.get("File-Type-Description"), 
+                "NetCDF-3/CDM");
+
+        String content = handler.toString();
+        assertContains("long_name = \"Surface area\"", content);
+        assertContains("float area(lat=128, lon=256)", content);
+        assertContains("float lat(lat=128)", content);
+        assertContains("double lat_bnds(lat=128, bnds=2)", content);
+        assertContains("double lon_bnds(lon=256, bnds=2)", content);
+        
+
 
     }
 

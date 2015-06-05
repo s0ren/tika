@@ -18,8 +18,7 @@ package org.apache.tika.parser.chm;
 
 import static org.junit.Assert.assertTrue;
 
-import java.util.Iterator;
-
+import org.apache.tika.io.IOUtils;
 import org.apache.tika.parser.chm.accessor.ChmDirectoryListingSet;
 import org.apache.tika.parser.chm.accessor.ChmItsfHeader;
 import org.apache.tika.parser.chm.accessor.ChmItspHeader;
@@ -69,7 +68,7 @@ public class TestChmBlockInfo {
         int indexOfControlData = chmDirListCont.getControlDataIndex();
 
         int indexOfResetTable = ChmCommons.indexOfResetTableBlock(data,
-                ChmConstants.LZXC.getBytes());
+                ChmConstants.LZXC.getBytes(IOUtils.UTF_8));
         byte[] dir_chunk = null;
         if (indexOfResetTable > 0) {
             // dir_chunk = Arrays.copyOfRange( data, indexOfResetTable,
@@ -107,9 +106,7 @@ public class TestChmBlockInfo {
 
     @Test
     public void testGetChmBlockInfo() {
-        for (Iterator<DirectoryListingEntry> it = chmDirListCont
-                .getDirectoryListingEntryList().iterator(); it.hasNext();) {
-            DirectoryListingEntry directoryListingEntry = it.next();
+        for (DirectoryListingEntry directoryListingEntry : chmDirListCont.getDirectoryListingEntryList()) {
             chmBlockInfo = ChmBlockInfo.getChmBlockInfoInstance(
                     directoryListingEntry, (int) clrt.getBlockLen(),
                     chmLzxcControlData);

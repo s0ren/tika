@@ -17,8 +17,8 @@
 package org.apache.tika.parser.microsoft;
 
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
 
 import java.io.InputStream;
 import java.util.Locale;
@@ -33,6 +33,7 @@ import org.apache.tika.metadata.OfficeOpenXMLExtended;
 import org.apache.tika.metadata.TikaCoreProperties;
 import org.apache.tika.parser.ParseContext;
 import org.apache.tika.sax.BodyContentHandler;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.xml.sax.ContentHandler;
 
@@ -53,7 +54,7 @@ public class WordParserTest extends TikaTest {
             assertEquals("Sample Word Document", metadata.get(TikaCoreProperties.TITLE));
             assertEquals("Keith Bennett", metadata.get(TikaCoreProperties.CREATOR));
             assertEquals("Keith Bennett", metadata.get(Metadata.AUTHOR));
-            assertTrue(handler.toString().contains("Sample Word Document"));
+            assertContains("Sample Word Document", handler.toString());
         } finally {
             input.close();
         }
@@ -68,7 +69,7 @@ public class WordParserTest extends TikaTest {
             Metadata metadata = new Metadata();
             new OfficeParser().parse(input, handler, metadata, new ParseContext());
 
-            assertTrue(handler.toString().contains("MSj00974840000[1].wav"));
+            assertContains("MSj00974840000[1].wav", handler.toString());
         } finally {
             input.close();
         }
@@ -111,7 +112,7 @@ public class WordParserTest extends TikaTest {
         assertTrue(xml.contains("<a href=\"http://tika.apache.org/\">Tika</a>"));
         // Paragraphs with other styles
         assertTrue(xml.contains("<p class=\"signature\">This one"));
-        
+
         // Try with a document that contains images
         xml = getXML("testWORD_3imgs.doc").xml;
 
@@ -119,7 +120,7 @@ public class WordParserTest extends TikaTest {
         assertTrue("Image not found in:\n"+xml, xml.contains("src=\"embedded:image1.png\""));
         assertTrue("Image not found in:\n"+xml, xml.contains("src=\"embedded:image2.jpg\""));
         assertTrue("Image not found in:\n"+xml, xml.contains("src=\"embedded:image3.png\""));
-            
+
         // Text too
         assertTrue(xml.contains("<p>The end!"));
 
@@ -135,7 +136,7 @@ public class WordParserTest extends TikaTest {
         // TIKA-692: test document containing multiple
         // character runs within a bold tag:
         xml = getXML("testWORD_bold_character_runs2.doc").xml;
-            
+
         // Make sure bold text arrived as single
         // contiguous string even though Word parser
         // handled this as 3 character runs
@@ -163,16 +164,16 @@ public class WordParserTest extends TikaTest {
     @Test
     public void testEmbeddedRTF() throws Exception {
         String result = getXML("testWORD_embedded_rtf.doc").xml;
-        assertTrue(result.indexOf("<div class=\"embedded\" id=\"_1404039792\" />") != -1);
-        assertTrue(result.indexOf("_1404039792.rtf") != -1);
+        assertTrue(result.contains("<div class=\"embedded\" id=\"_1404039792\" />"));
+        assertTrue(result.contains("_1404039792.rtf"));
     }
 
     // TIKA-1019
     @Test
     public void testDocumentLink() throws Exception {
         String result = getXML("testDocumentLink.doc").xml;
-        assertTrue(result.indexOf("<div class=\"embedded\" id=\"_1327495610\" />") != -1);
-        assertTrue(result.indexOf("_1327495610.unknown") != -1);
+        assertTrue(result.contains("<div class=\"embedded\" id=\"_1327495610\" />"));
+        assertTrue(result.contains("_1327495610.unknown"));
     }
 
     @Test
@@ -192,7 +193,7 @@ public class WordParserTest extends TikaTest {
             assertEquals("Gym class featuring a brown fox and lazy dog", metadata.get(Metadata.SUBJECT));
             assertEquals("Nevin Nollop", metadata.get(TikaCoreProperties.CREATOR));
             assertEquals("Nevin Nollop", metadata.get(Metadata.AUTHOR));
-            assertTrue(handler.toString().contains("The quick brown fox jumps over the lazy dog"));
+            assertContains("The quick brown fox jumps over the lazy dog", handler.toString());
         } finally {
             input.close();
         }
@@ -269,7 +270,7 @@ public class WordParserTest extends TikaTest {
         assertContains("And then some Gothic text:", content);
         assertContains("\uD800\uDF32\uD800\uDF3f\uD800\uDF44\uD800\uDF39\uD800\uDF43\uD800\uDF3A", content);
     }
-    
+
     /**
      * TIKA-1044 - Handle documents where parts of the
      *  text have no formatting or styles applied to them
@@ -290,7 +291,7 @@ public class WordParserTest extends TikaTest {
        String content = handler.toString();
        assertContains("Will generate an exception", content);
     }
-    
+
     /**
      * Ensures that custom OLE2 (HPSF) properties are extracted
      */
@@ -299,7 +300,7 @@ public class WordParserTest extends TikaTest {
        InputStream input = WordParserTest.class.getResourceAsStream(
              "/test-documents/testWORD_custom_props.doc");
        Metadata metadata = new Metadata();
-       
+
        try {
           ContentHandler handler = new BodyContentHandler(-1);
           ParseContext context = new ParseContext();
@@ -308,7 +309,7 @@ public class WordParserTest extends TikaTest {
        } finally {
           input.close();
        }
-       
+
        assertEquals("application/msword",   metadata.get(Metadata.CONTENT_TYPE));
        assertEquals("EJ04325S",             metadata.get(TikaCoreProperties.CREATOR));
        assertEquals("Etienne Jouvin",       metadata.get(TikaCoreProperties.MODIFIER));
@@ -351,7 +352,7 @@ public class WordParserTest extends TikaTest {
     public void testTabularSymbol() throws Exception {
         assertContains("one two", getXML("testWORD_tabular_symbol.doc").xml.replaceAll("\\s+", " "));
     }
-    
+
     /**
      * TIKA-1229 Hyperlinks in Headers should be output as such,
      *  not plain text with control characters
@@ -370,11 +371,57 @@ public class WordParserTest extends TikaTest {
 
         // Check we don't have the special text HYPERLINK
         assertFalse(xml.contains("HYPERLINK"));
-        
+
         // Check we do have the link
         assertContains("<a href=\"http://tw-systemhaus.de\">http:", xml);
-        
+
         // Check we do have the email
         assertContains("<a href=\"mailto:ab@example.com\">ab@", xml);
+    }
+
+    @Test
+    public void testControlCharacter() throws Exception {
+      assertContains("1. Introduzione<b> </a></b> </p>", getXML("testControlCharacters.doc").xml.replaceAll("\\s+", " "));
+    }
+
+    @Test
+    public void testParagraphsAfterTables() throws Exception {
+        XMLResult result = getXML("test_TIKA-1251.doc");
+
+        String xml = result.xml;
+        Metadata metadata = result.metadata;
+
+        assertEquals(
+                "application/msword",
+                metadata.get(Metadata.CONTENT_TYPE));
+
+        assertContains("<p>1. Organisering av vakten:</p>", xml);
+
+    }
+
+    @Test
+    public void testHyperlinkStringIOOBESmartQuote() throws Exception {
+        //TIKA-1512, one cause: closing double quote is a smart quote
+        //test file contributed by user
+        XMLResult result = getXML("testWORD_closingSmartQInHyperLink.doc");
+        assertContains("href=\"https://issues.apache.org/jira/browse/TIKA-1512", result.xml);
+    }
+
+    @Test
+    @Ignore //until we determine whether we can include test docs or not
+    public void testHyperlinkStringLongNoCloseQuote() throws Exception {
+        //TIKA-1512, one cause: no closing quote on really long string
+        //test file derived from govdocs1 012152.doc
+        XMLResult result = getXML("testWORD_longHyperLinkNoCloseQuote.doc");
+        assertContains("href=\"http://www.lexis.com", result.xml);
+    }
+
+    @Test
+    @Ignore //until we determine whether we can include test docs or not
+    public void testHyperlinkStringLongCarriageReturn() throws Exception {
+        //TIKA-1512, one cause: no closing quote, but carriage return
+        //test file derived from govdocs1 040044.doc
+        XMLResult result = getXML("testWORD_hyperLinkCarriageReturn.doc");
+        assertContains("href=\"http://www.nib.org", result.xml);
     }
 }

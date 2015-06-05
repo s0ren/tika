@@ -19,69 +19,42 @@ package org.apache.tika.server;
 
 import static org.junit.Assert.assertEquals;
 
-import java.io.InputStream;
-
 import javax.ws.rs.core.Response;
 
-import org.apache.cxf.binding.BindingFactoryManager;
-import org.apache.cxf.endpoint.Server;
-import org.apache.cxf.jaxrs.JAXRSBindingFactory;
+import java.io.InputStream;
+
 import org.apache.cxf.jaxrs.JAXRSServerFactoryBean;
 import org.apache.cxf.jaxrs.client.WebClient;
 import org.apache.cxf.jaxrs.lifecycle.SingletonResourceProvider;
 import org.apache.tika.Tika;
-import org.junit.After;
-import org.junit.Before;
+import org.apache.tika.server.resource.TikaVersion;
 import org.junit.Test;
 
 public class TikaVersionTest extends CXFTestBase {
+    protected static final String VERSION_PATH = "/version";
 
-  private static final String VERSION_PATH = "/version";
-  private static final String endPoint = "http://localhost:"
-      + TikaServerCli.DEFAULT_PORT;
-  private Server server;
+    @Override
+    protected void setUpResources(JAXRSServerFactoryBean sf) {
+        sf.setResourceClasses(TikaVersion.class);
+        sf.setResourceProvider(
+                TikaVersion.class,
+                new SingletonResourceProvider(new TikaVersion(tika))
+        );
+    }
 
-  @Before
-  public void setUp() {
-    JAXRSServerFactoryBean sf = new JAXRSServerFactoryBean();
-    sf.setResourceClasses(TikaVersion.class);
-    sf.setResourceProvider(
-        TikaVersion.class,
-        new SingletonResourceProvider(new TikaVersion())
-    );
-    sf.setAddress(endPoint + "/");
+    @Override
+    protected void setUpProviders(JAXRSServerFactoryBean sf) {
+    }
 
-    BindingFactoryManager manager = sf.getBus().getExtension(
-        BindingFactoryManager.class
-    );
+    @Test
+    public void testGetVersion() throws Exception {
+        Response response = WebClient
+                .create(endPoint + VERSION_PATH)
+                .type("text/plain")
+                .accept("text/plain")
+                .get();
 
-    JAXRSBindingFactory factory = new JAXRSBindingFactory();
-    factory.setBus(sf.getBus());
-
-    manager.registerBindingFactory(
-        JAXRSBindingFactory.JAXRS_BINDING_ID,
-        factory
-    );
-
-    server = sf.create();
-  }
-
-  @After
-  public void tearDown() throws Exception {
-    server.stop();
-    server.destroy();
-  }
-
-  @Test
-  public void testGetVersion() throws Exception {
-    Response response = WebClient
-        .create(endPoint + VERSION_PATH)
-        .type("text/plain")
-        .accept("text/plain")
-        .get();
-
-    assertEquals(new Tika().toString(),
-        getStringFromInputStream((InputStream) response.getEntity()));
-  }
-
+        assertEquals(new Tika().toString(),
+                getStringFromInputStream((InputStream) response.getEntity()));
+    }
 }

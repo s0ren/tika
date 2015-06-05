@@ -16,16 +16,21 @@
  */
 package org.apache.tika.parser.microsoft.ooxml;
 
+import static org.apache.tika.sax.XHTMLContentHandler.XHTML;
+
 import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.io.InputStream;
 import java.net.URI;
 import java.util.List;
 
 import org.apache.poi.POIXMLDocument;
 import org.apache.poi.POIXMLTextExtractor;
 import org.apache.poi.openxml4j.exceptions.InvalidFormatException;
+import org.apache.poi.openxml4j.opc.OPCPackage;
 import org.apache.poi.openxml4j.opc.PackagePart;
 import org.apache.poi.openxml4j.opc.PackageRelationship;
+import org.apache.poi.openxml4j.opc.PackageRelationshipTypes;
 import org.apache.poi.openxml4j.opc.TargetMode;
 import org.apache.poi.poifs.filesystem.DirectoryNode;
 import org.apache.poi.poifs.filesystem.Ole10Native;
@@ -36,6 +41,7 @@ import org.apache.tika.extractor.EmbeddedDocumentExtractor;
 import org.apache.tika.extractor.ParsingEmbeddedDocumentExtractor;
 import org.apache.tika.io.TikaInputStream;
 import org.apache.tika.metadata.Metadata;
+import org.apache.tika.metadata.TikaCoreProperties;
 import org.apache.tika.parser.ParseContext;
 import org.apache.tika.parser.microsoft.OfficeParser.POIFSDocumentType;
 import org.apache.tika.sax.EmbeddedContentHandler;
@@ -43,6 +49,7 @@ import org.apache.tika.sax.XHTMLContentHandler;
 import org.apache.xmlbeans.XmlException;
 import org.xml.sax.ContentHandler;
 import org.xml.sax.SAXException;
+import org.xml.sax.helpers.AttributesImpl;
 
 /**
  * Base class for all Tika OOXML extractors.
@@ -106,6 +113,9 @@ public abstract class AbstractOOXMLExtractor implements OOXMLExtractor {
 
         // Now do any embedded parts
         handleEmbeddedParts(handler);
+        
+        // thumbnail
+        handleThumbnail(handler);
 
         xhtml.endDocument();
     }
@@ -121,6 +131,37 @@ public abstract class AbstractOOXMLExtractor implements OOXMLExtractor {
       }
 
       return desc;
+    }
+    
+    private void handleThumbnail( ContentHandler handler ) {
+        try {
+            OPCPackage opcPackage = extractor.getPackage();
+            for (PackageRelationship rel : opcPackage.getRelationshipsByType( PackageRelationshipTypes.THUMBNAIL )) {
+                PackagePart tPart = opcPackage.getPart(rel);
+                InputStream tStream = tPart.getInputStream();
+                Metadata thumbnailMetadata = new Metadata();                
+                String thumbName = tPart.getPartName().getName();
+                thumbnailMetadata.set(Metadata.RESOURCE_NAME_KEY, thumbName);
+                
+                AttributesImpl attributes = new AttributesImpl();
+                attributes.addAttribute(XHTML, "class", "class", "CDATA", "embedded");
+                attributes.addAttribute(XHTML, "id", "id", "CDATA", thumbName);
+                handler.startElement(XHTML, "div", "div", attributes);
+                handler.endElement(XHTML, "div", "div");
+                
+                thumbnailMetadata.set(Metadata.EMBEDDED_RELATIONSHIP_ID, thumbName);
+                thumbnailMetadata.set(Metadata.CONTENT_TYPE, tPart.getContentType());
+                thumbnailMetadata.set(TikaCoreProperties.TITLE, tPart.getPartName().getName());
+                
+                if (embeddedExtractor.shouldParseEmbedded(thumbnailMetadata)) {
+                    embeddedExtractor.parseEmbedded(TikaInputStream.get(tStream), new EmbeddedContentHandler(handler), thumbnailMetadata, false);
+                }
+                
+                tStream.close();
+            }
+         } catch (Exception ex) {
+             
+         }
     }
 
     private void handleEmbeddedParts(ContentHandler handler)
@@ -174,11 +215,10 @@ public abstract class AbstractOOXMLExtractor implements OOXMLExtractor {
     private void handleEmbeddedOLE(PackagePart part, ContentHandler handler, String rel)
             throws IOException, SAXException {
         // A POIFSFileSystem needs to be at least 3 blocks big to be valid
-        // TODO: TIKA-1118 Upgrade to POI 4.0 then enable this block of code
-//        if (part.getSize() >= 0 && part.getSize() < 512*3) {
-//           // Too small, skip
-//           return;
-//        }
+        if (part.getSize() >= 0 && part.getSize() < 512*3) {
+           // Too small, skip
+           return;
+        }
        
         // Open the POIFS (OLE2) structure and process
         POIFSFileSystem fs = new POIFSFileSystem(part.getInputStream());
@@ -206,7 +246,9 @@ public abstract class AbstractOOXMLExtractor implements OOXMLExtractor {
                 // TIKA-704: OLE 1.0 embedded document
                 Ole10Native ole =
                         Ole10Native.createFromEmbeddedOleObject(fs);
-                metadata.set(Metadata.RESOURCE_NAME_KEY, ole.getLabel());
+                if (ole.getLabel() != null) {
+                    metadata.set(Metadata.RESOURCE_NAME_KEY, ole.getLabel());
+                }
                 byte[] data = ole.getDataBuffer();
                 if (data != null) {
                     stream = TikaInputStream.get(data);

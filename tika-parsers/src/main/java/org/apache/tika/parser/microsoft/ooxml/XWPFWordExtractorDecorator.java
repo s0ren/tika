@@ -16,10 +16,10 @@
  */
 package org.apache.tika.parser.microsoft.ooxml;
 
+import javax.xml.namespace.QName;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
-import javax.xml.namespace.QName;
 
 import org.apache.poi.openxml4j.opc.PackagePart;
 import org.apache.poi.xwpf.extractor.XWPFWordExtractor;
@@ -28,7 +28,9 @@ import org.apache.poi.xwpf.model.XWPFHeaderFooterPolicy;
 import org.apache.poi.xwpf.usermodel.BodyType;
 import org.apache.poi.xwpf.usermodel.IBody;
 import org.apache.poi.xwpf.usermodel.IBodyElement;
+import org.apache.poi.xwpf.usermodel.ICell;
 import org.apache.poi.xwpf.usermodel.IRunElement;
+import org.apache.poi.xwpf.usermodel.ISDTContent;
 import org.apache.poi.xwpf.usermodel.XWPFDocument;
 import org.apache.poi.xwpf.usermodel.XWPFHeaderFooter;
 import org.apache.poi.xwpf.usermodel.XWPFHyperlink;
@@ -38,23 +40,23 @@ import org.apache.poi.xwpf.usermodel.XWPFPicture;
 import org.apache.poi.xwpf.usermodel.XWPFPictureData;
 import org.apache.poi.xwpf.usermodel.XWPFRun;
 import org.apache.poi.xwpf.usermodel.XWPFSDT;
-import org.apache.poi.xwpf.usermodel.XWPFSDTContent;
+import org.apache.poi.xwpf.usermodel.XWPFSDTCell;
 import org.apache.poi.xwpf.usermodel.XWPFStyle;
 import org.apache.poi.xwpf.usermodel.XWPFStyles;
 import org.apache.poi.xwpf.usermodel.XWPFTable;
 import org.apache.poi.xwpf.usermodel.XWPFTableCell;
 import org.apache.poi.xwpf.usermodel.XWPFTableRow;
 import org.apache.tika.parser.ParseContext;
-import org.apache.tika.parser.microsoft.WordExtractor.TagAndStyle;
 import org.apache.tika.parser.microsoft.WordExtractor;
+import org.apache.tika.parser.microsoft.WordExtractor.TagAndStyle;
 import org.apache.tika.sax.XHTMLContentHandler;
 import org.apache.xmlbeans.XmlCursor;
 import org.apache.xmlbeans.XmlException;
 import org.apache.xmlbeans.XmlObject;
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTBookmark;
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTObject;
-import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTSectPr;
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTP;
+import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTSectPr;
 import org.xml.sax.SAXException;
 import org.xml.sax.helpers.AttributesImpl;
 
@@ -111,7 +113,7 @@ public class XWPFWordExtractorDecorator extends AbstractOOXMLExtractor {
     
     private void extractSDT(XWPFSDT element, XHTMLContentHandler xhtml) throws SAXException, 
     XmlException, IOException {
-       XWPFSDTContent content = element.getContent();
+       ISDTContent content = element.getContent();
        String tag = "p";
        xhtml.startElement(tag);
        xhtml.characters(content.getText());
@@ -194,7 +196,8 @@ public class XWPFWordExtractorDecorator extends AbstractOOXMLExtractor {
        // Attach bookmarks for the paragraph
        // (In future, we might put them in the right place, for now
        //  we just put them in the correct paragraph)
-       for (CTBookmark bookmark : paragraph.getCTP().getBookmarkStartList()) {
+       for (int i = 0; i < paragraph.getCTP().sizeOfBookmarkStartArray(); i++) {
+          CTBookmark bookmark = paragraph.getCTP().getBookmarkStartArray(i);
           xhtml.startElement("a", "name", bookmark.getName());
           xhtml.endElement("a");
        }
@@ -331,10 +334,14 @@ public class XWPFWordExtractorDecorator extends AbstractOOXMLExtractor {
        xhtml.startElement("tbody");
        for(XWPFTableRow row : table.getRows()) {
           xhtml.startElement("tr");
-          for(XWPFTableCell cell : row.getTableCells()) {
-             xhtml.startElement("td");
-             extractIBodyText(cell, xhtml);
-             xhtml.endElement("td");
+          for(ICell cell : row.getTableICells()){
+              xhtml.startElement("td");
+              if (cell instanceof XWPFTableCell) {
+                  extractIBodyText((XWPFTableCell)cell, xhtml);
+              } else if (cell instanceof XWPFSDTCell) {
+                  xhtml.characters(((XWPFSDTCell)cell).getContent().getText());
+              }
+              xhtml.endElement("td");
           }
           xhtml.endElement("tr");
        }

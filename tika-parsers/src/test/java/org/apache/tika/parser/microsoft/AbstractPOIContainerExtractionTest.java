@@ -19,13 +19,10 @@ package org.apache.tika.parser.microsoft;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 
-import java.io.InputStream;
 import java.net.URL;
-import java.util.ArrayList;
-import java.util.List;
 
+import org.apache.tika.TikaTest.TrackingHandler;
 import org.apache.tika.extractor.ContainerExtractor;
-import org.apache.tika.extractor.EmbeddedResourceHandler;
 import org.apache.tika.io.TikaInputStream;
 import org.apache.tika.mime.MediaType;
 
@@ -71,22 +68,11 @@ public abstract class AbstractPOIContainerExtractionTest {
         }
     }
     
-    protected TikaInputStream getTestFile(String filename) throws Exception {
+    protected static TikaInputStream getTestFile(String filename) throws Exception {
         URL input = AbstractPOIContainerExtractionTest.class.getResource(
                "/test-documents/" + filename);
         assertNotNull(filename + " not found", input);
 
         return TikaInputStream.get(input);
-    }
-    
-    public static class TrackingHandler implements EmbeddedResourceHandler {
-       public List<String> filenames = new ArrayList<String>();
-       public List<MediaType> mediaTypes = new ArrayList<MediaType>();
-       
-       public void handle(String filename, MediaType mediaType,
-            InputStream stream) {
-          filenames.add(filename);
-          mediaTypes.add(mediaType);
-      }
     }
 }

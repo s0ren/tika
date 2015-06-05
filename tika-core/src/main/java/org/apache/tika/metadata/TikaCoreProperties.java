@@ -36,6 +36,46 @@ package org.apache.tika.metadata;
  */
 @SuppressWarnings("deprecation")
 public interface TikaCoreProperties {
+
+    /**
+     * A file might contain different types of embedded documents.
+     * The most common is the ATTACHEMENT.
+     * An INLINE embedded resource should be used for embedded image
+     * files that are used to render the page image (as in PDXObjImages in PDF files).
+     * <p>
+     * Not all parsers have yet implemented this. 
+     *
+     */
+    public enum EmbeddedResourceType {
+        INLINE,
+        ATTACHMENT
+    };
+
+    /**
+     * Use this to prefix metadata properties that store information
+     * about the parsing process.  Users should be able to distinguish
+     * between metadata that was contained within the document and
+     * metadata about the parsing process.
+     * In Tika 2.0 (or earlier?), let's change X-ParsedBy to X-TIKA-Parsed-By.
+     */
+    public static String TIKA_META_PREFIX = "X-TIKA"+Metadata.NAMESPACE_PREFIX_DELIMITER;
+
+    /**
+     * Use this to store parse exception information in the Metadata object.
+     */
+    public static String TIKA_META_EXCEPTION_PREFIX = TIKA_META_PREFIX+"EXCEPTION"+
+            Metadata.NAMESPACE_PREFIX_DELIMITER;
+
+    /**
+     * This is currently used to identify Content-Type that may be
+     * included within a document, such as in html documents
+     * (e.g. <meta http-equiv="content-type" content="text/html; charset=UTF-8">)
+     , or the value might come from outside the document.  This information
+     * may be faulty and should be treated only as a hint.
+     */
+    public static final Property CONTENT_TYPE_HINT =
+            Property.internalText(HttpHeaders.CONTENT_TYPE+"-Hint");
+
     /**
      * @see DublinCore#FORMAT
      */
@@ -246,5 +286,13 @@ public interface TikaCoreProperties {
     @Deprecated
     public static final Property TRANSITION_SUBJECT_TO_OO_SUBJECT = Property.composite(OfficeOpenXMLCore.SUBJECT, 
             new Property[] { Property.internalText(Metadata.SUBJECT) });
+
+    /**
+     * See {@link #EMBEDDED_RESOURCE_TYPE}
+     */
+    public static final Property EMBEDDED_RESOURCE_TYPE = 
+            Property.internalClosedChoise(TikaMetadataKeys.EMBEDDED_RESOURCE_TYPE, 
+                    new String[]{EmbeddedResourceType.ATTACHMENT.toString(), EmbeddedResourceType.INLINE.toString()});
+
     
 }

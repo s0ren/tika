@@ -16,15 +16,27 @@
  */
 package org.apache.tika;
 
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
+import java.io.ByteArrayOutputStream;
 import java.io.File;
+import java.io.IOException;
 import java.io.InputStream;
 import java.net.URISyntaxException;
 import java.net.URL;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
 
+import org.apache.tika.extractor.EmbeddedResourceHandler;
+import org.apache.tika.io.IOUtils;
+import org.apache.tika.io.TikaInputStream;
 import org.apache.tika.metadata.Metadata;
+import org.apache.tika.mime.MediaType;
 import org.apache.tika.parser.AutoDetectParser;
 import org.apache.tika.parser.ParseContext;
 import org.apache.tika.parser.Parser;
@@ -70,8 +82,18 @@ public abstract class TikaTest {
        return stream;
    }
 
-    public void assertContains(String needle, String haystack) {
+    public static void assertContains(String needle, String haystack) {
        assertTrue(needle + " not found in:\n" + haystack, haystack.contains(needle));
+    }
+    public static <T> void assertContains(T needle, Collection<? extends T> haystack) {
+        assertTrue(needle + " not found in:\n" + haystack, haystack.contains(needle));
+    }
+
+    public static void assertNotContained(String needle, String haystack) {
+        assertFalse(needle + " unexpectedly found in:\n" + haystack, haystack.contains(needle));
+    }
+    public static <T> void assertNotContained(T needle, Collection<? extends T> haystack) {
+        assertFalse(needle + " unexpectedly found in:\n" + haystack, haystack.contains(needle));
     }
 
     protected static class XMLResult {
@@ -82,6 +104,10 @@ public abstract class TikaTest {
             this.xml = xml;
             this.metadata = metadata;
         }
+    }
+
+    protected XMLResult getXML(String filePath, Metadata metadata) throws Exception {
+        return getXML(getResourceAsStream("/test-documents/" + filePath), new AutoDetectParser(), metadata);
     }
 
     protected XMLResult getXML(String filePath) throws Exception {
@@ -128,5 +154,57 @@ public abstract class TikaTest {
         return getText(is, parser, new ParseContext(), new Metadata());
     }
 
+    /**
+     * Keeps track of media types and file names recursively.
+     *
+     */
+    public static class TrackingHandler implements EmbeddedResourceHandler {
+        public List<String> filenames = new ArrayList<String>();
+        public List<MediaType> mediaTypes = new ArrayList<MediaType>();
+        
+        private final Set<MediaType> skipTypes;
+        
+        public TrackingHandler() {
+            skipTypes = new HashSet<MediaType>();
+        }
+     
+        public TrackingHandler(Set<MediaType> skipTypes) {
+            this.skipTypes = skipTypes;
+        }
 
+        @Override
+        public void handle(String filename, MediaType mediaType,
+                InputStream stream) {
+            if (skipTypes.contains(mediaType)) {
+                return;
+            }
+            mediaTypes.add(mediaType);
+            filenames.add(filename);
+        }
+    }
+    
+    /**
+     * Copies byte[] of embedded documents into a List.
+     */
+    public static class ByteCopyingHandler implements EmbeddedResourceHandler {
+
+        public List<byte[]> bytes = new ArrayList<byte[]>();
+
+        @Override
+        public void handle(String filename, MediaType mediaType,
+                InputStream stream) {
+            ByteArrayOutputStream os = new ByteArrayOutputStream();
+            if (! stream.markSupported()) {
+                stream = TikaInputStream.get(stream);
+            }
+            stream.mark(0);
+            try {
+                IOUtils.copy(stream, os);
+                bytes.add(os.toByteArray());
+                stream.reset();
+            } catch (IOException e) {
+                //swallow
+            }
+        }
+    }
 }

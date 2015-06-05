@@ -217,7 +217,7 @@ public class CharsetDetector {
         Collections.sort(matches);      // CharsetMatch compares on confidence
         Collections.reverse(matches);   //  Put best match first.
         CharsetMatch [] resultArray = new CharsetMatch[matches.size()];
-        resultArray = (CharsetMatch[]) matches.toArray(resultArray);
+        resultArray = matches.toArray(resultArray);
         return resultArray;
     }
 
@@ -349,6 +349,10 @@ public class CharsetDetector {
      * @param encoding - name of character encoding
      */
     private void setCanonicalDeclaredEncoding(String encoding) {
+        if ((encoding == null) || encoding.isEmpty()) {
+            return;
+        }
+        
         Charset cs = Charset.forName(encoding);
         if (cs != null) {
             fDeclaredEncoding = cs.name();
@@ -542,8 +546,8 @@ public class CharsetDetector {
         String[] charsetNames = new String [recognizers.size()];
         int out = 0;
         
-        for (int i = 0; i < recognizers.size(); i++) {
-            String name = ((CharsetRecognizer)recognizers.get(i)).getName();
+        for (CharsetRecognizer recognizer : recognizers) {
+            String name = recognizer.getName();
             
             if (out == 0 || ! name.equals(charsetNames[out - 1])) {
                 charsetNames[out++] = name;

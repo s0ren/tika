@@ -20,12 +20,13 @@ import java.io.ByteArrayInputStream;
 import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 
 import org.apache.tika.config.TikaConfig;
 import org.apache.tika.metadata.Metadata;
-
 import org.junit.Before;
 import org.junit.Test;
+
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
@@ -142,18 +143,49 @@ public class MimeTypesReaderTest {
             mime.getLinks().get(0).toString());
     }
     
+    @Test
+    public void testReadParameterHierarchy() throws Exception {
+        MimeType mimeBTree4 = this.mimeTypes.forName("application/x-berkeley-db;format=btree;version=4");
+        MediaType mtBTree4 = mimeBTree4.getType();
+        
+        // Canonicalised with spaces
+        assertEquals("application/x-berkeley-db; format=btree; version=4", mimeBTree4.toString());
+        assertEquals("application/x-berkeley-db; format=btree; version=4", mtBTree4.toString());
+        
+        // Parent has one parameter
+        MediaType mtBTree = this.mimeTypes.getMediaTypeRegistry().getSupertype(mtBTree4);
+        assertEquals("application/x-berkeley-db; format=btree", mtBTree.toString());
+        
+        // Parent has several children, for versions 2 through 4
+        Set<MediaType> mtBTreeChildren = this.mimeTypes.getMediaTypeRegistry().getChildTypes(mtBTree);
+        assertTrue(mtBTreeChildren.toString(), mtBTreeChildren.size() >= 3);
+        assertTrue(mtBTreeChildren.toString(), mtBTreeChildren.contains(mtBTree4));
+        
+        // Parent of that has none
+        MediaType mtBD = this.mimeTypes.getMediaTypeRegistry().getSupertype(mtBTree);
+        assertEquals("application/x-berkeley-db", mtBD.toString());
+        
+        // If we use one with parameters not known in the media registry,
+        //  getting the parent will return the non-parameter version
+        MediaType mtAlt = MediaType.application("x-berkeley-db; format=unknown; version=42");
+        MediaType mtAltP = this.mimeTypes.getMediaTypeRegistry().getSupertype(mtAlt);
+        assertEquals("application/x-berkeley-db", mtAltP.toString());
+    }
+    
     /**
      * TIKA-746 Ensures that the custom mimetype maps were also 
      *  loaded and used
      */
     @Test
     public void testCustomMimeTypes() {
-       // Check that it knows about our two special ones
+       // Check that it knows about our three special ones
        String helloWorld = "hello/world";
        String helloWorldFile = "hello/world-file";
+       String helloXWorld = "hello/x-world-hello";
        try {
           assertNotNull(this.mimeTypes.forName(helloWorld));
           assertNotNull(this.mimeTypes.forName(helloWorldFile));
+          assertNotNull(this.mimeTypes.forName(helloXWorld));
        } catch (Exception e) {
           fail(e.getMessage());
        }
@@ -162,15 +194,23 @@ public class MimeTypesReaderTest {
        try {
           MimeType hw = this.mimeTypes.forName(helloWorld);
           MimeType hwf = this.mimeTypes.forName(helloWorldFile);
+          MimeType hxw = this.mimeTypes.forName(helloXWorld);
           
-          // The parent has no comments, globs etc
+          // The parent has no comments, globs, magic etc
           assertEquals("", hw.getDescription());
           assertEquals("", hw.getExtension());
           assertEquals(0, hw.getExtensions().size());
+          assertEquals(0, hw.getMagics().size());
           
           // The file one does
           assertEquals("A \"Hello World\" file", hwf.getDescription());
           assertEquals(".hello.world", hwf.getExtension());
+          assertEquals(1, hwf.getMagics().size());
+          
+          // The alternate one has most
+          assertEquals("", hxw.getDescription());
+          assertEquals(".x-hello-world", hxw.getExtension());
+          assertEquals(1, hxw.getMagics().size());
           
           // Check that we can correct detect with the file one:
           // By name
@@ -178,11 +218,15 @@ public class MimeTypesReaderTest {
           m.add(Metadata.RESOURCE_NAME_KEY, "test.hello.world");
           assertEquals(hwf.toString(), this.mimeTypes.detect(null, m).toString());
           
-          // By contents
+          m = new Metadata();
+          m.add(Metadata.RESOURCE_NAME_KEY, "test.x-hello-world");
+          assertEquals(hxw.toString(), this.mimeTypes.detect(null, m).toString());
+          
+          // By contents - picks the x one as that sorts later
           m = new Metadata();
           ByteArrayInputStream s = new ByteArrayInputStream(
                 "Hello, World!".getBytes("ASCII"));
-          assertEquals(hwf.toString(), this.mimeTypes.detect(s, m).toString());
+          assertEquals(hxw.toString(), this.mimeTypes.detect(s, m).toString());
        } catch (Exception e) {
           fail(e.getMessage());
        }

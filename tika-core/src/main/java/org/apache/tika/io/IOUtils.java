@@ -30,6 +30,7 @@ import java.io.Reader;
 import java.io.StringWriter;
 import java.io.Writer;
 import java.nio.channels.Channel;
+import java.nio.charset.Charset;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -75,6 +76,9 @@ import java.util.List;
  * @since Apache Tika 0.4, copied (partially) from Commons IO 1.4
  */
 public class IOUtils {
+
+    //TODO: switch to StandardCharsets when we move to Java 1.7
+    public static final Charset UTF_8 = Charset.forName("UTF-8");
 
     /**
      * The default buffer size to use.
@@ -254,7 +258,7 @@ public class IOUtils {
      */
     @Deprecated
     public static byte[] toByteArray(String input) throws IOException {
-        return input.getBytes();
+        return input.getBytes(IOUtils.UTF_8);
     }
 
     // read char[]
@@ -392,7 +396,7 @@ public class IOUtils {
      */
     @Deprecated
     public static String toString(byte[] input) throws IOException {
-        return new String(input);
+        return new String(input, IOUtils.UTF_8);
     }
 
     /**
@@ -412,8 +416,9 @@ public class IOUtils {
     @Deprecated
     public static String toString(byte[] input, String encoding)
             throws IOException {
+        // If no encoding is specified, default to UTF-8.
         if (encoding == null) {
-            return new String(input);
+            return new String(input, IOUtils.UTF_8);
         } else {
             return new String(input, encoding);
         }
@@ -435,7 +440,7 @@ public class IOUtils {
      * @since Commons IO 1.1
      */
     public static List<String> readLines(InputStream input) throws IOException {
-        InputStreamReader reader = new InputStreamReader(input);
+        InputStreamReader reader = new InputStreamReader(input, IOUtils.UTF_8);
         return readLines(reader);
     }
 
@@ -529,7 +534,7 @@ public class IOUtils {
      * @since Commons IO 1.1
      */
     public static InputStream toInputStream(String input) {
-        byte[] bytes = input.getBytes();
+        byte[] bytes = input.getBytes(IOUtils.UTF_8);
         return new ByteArrayInputStream(bytes);
     }
 
@@ -547,7 +552,7 @@ public class IOUtils {
      * @since Commons IO 1.1
      */
     public static InputStream toInputStream(String input, String encoding) throws IOException {
-        byte[] bytes = encoding != null ? input.getBytes(encoding) : input.getBytes();
+        byte[] bytes = encoding != null ? input.getBytes(encoding) : input.getBytes(IOUtils.UTF_8);
         return new ByteArrayInputStream(bytes);
     }
 
@@ -585,7 +590,7 @@ public class IOUtils {
      */
     public static void write(byte[] data, Writer output) throws IOException {
         if (data != null) {
-            output.write(new String(data));
+            output.write(new String(data, IOUtils.UTF_8));
         }
     }
 
@@ -653,7 +658,7 @@ public class IOUtils {
     public static void write(char[] data, OutputStream output)
             throws IOException {
         if (data != null) {
-            output.write(new String(data).getBytes());
+            output.write(new String(data).getBytes(IOUtils.UTF_8));
         }
     }
 
@@ -779,7 +784,7 @@ public class IOUtils {
     public static void write(String data, OutputStream output)
             throws IOException {
         if (data != null) {
-            output.write(data.getBytes());
+            output.write(data.getBytes(IOUtils.UTF_8));
         }
     }
 
@@ -848,7 +853,7 @@ public class IOUtils {
     public static void write(StringBuffer data, OutputStream output)
             throws IOException {
         if (data != null) {
-            output.write(data.toString().getBytes());
+            output.write(data.toString().getBytes(IOUtils.UTF_8));
         }
     }
 
@@ -954,7 +959,7 @@ public class IOUtils {
      */
     public static void copy(InputStream input, Writer output)
             throws IOException {
-        InputStreamReader in = new InputStreamReader(input);
+        InputStreamReader in = new InputStreamReader(input, IOUtils.UTF_8);
         copy(in, output);
     }
 
@@ -1061,7 +1066,7 @@ public class IOUtils {
      */
     public static void copy(Reader input, OutputStream output)
             throws IOException {
-        OutputStreamWriter out = new OutputStreamWriter(output);
+        OutputStreamWriter out = new OutputStreamWriter(output, IOUtils.UTF_8);
         copy(input, out);
         // XXX Unless anyone is planning on rewriting OutputStreamWriter, we
         // have to flush here.

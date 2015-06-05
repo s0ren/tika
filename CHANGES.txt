@@ -1,3 +1,280 @@
+Release 1.8 - 4/13/2015
+
+  * Fix null pointer when processing ODT footer styles (TIKA-1600).
+
+  * Upgrade to com.drewnoakes' metadata-extractor to 2.0 and
+    add parser for webp metadata (TIKA-1594).
+
+  * Duration extracted from MP3s with no ID3 tags (TIKA-1589).
+
+  * Upgraded to PDFBox 1.8.9 (TIKA-1575).
+
+  * Tika now supports the IsaTab data standard for bioinformatics
+    both in terms of MIME identification and in terms of parsing
+    (TIKA-1580).
+
+  * Tika server can now enable CORS requests with the command line
+    "--cors" or "-C" option (TIKA-1586).
+
+  * Update jhighlight dependency to avoid using LGPL license. Thank
+    @kkrugler for his great contribution (TIKA-1581).
+  
+  * Updated HDF and NetCDF parsers to output file version in 
+    metadata (TIKA-1578 and TIKA-1579).
+
+  * Upgraded to POI 3.12-beta1 (TIKA-1531).
+
+  * Added tika-batch module for directory to directory batch
+    processing.  This is a new, experimental capability, and the API will 
+    likely change in future releases (TIKA-1330).
+
+  * Translator.translate() Exceptions are now restricted to
+    TikaException and IOException (TIKA-1416).
+
+  * Tika now supports MIME detection for Microsoft Extended 
+    Makefiles (EMF) (TIKA-1554).
+
+  * Tika has improved delineation in XML and HTML MIME detection
+    (TIKA-1365).
+
+  * Upgraded the Drew Noakes metadata-extractor to version 2.7.2
+    (TIKA-1576).
+
+  * Added basic style support for ODF documents, contributed by
+    Axel Dörfler (TIKA-1063).
+
+  * Move Tika server resources and writers to separate
+    org.apache.tika.server.resource and writer packages (TIKA-1564).
+
+  * Upgrade UCAR dependencies to 4.5.5 (TIKA-1571).
+  
+  * Fix Paths in Tika server welcome page (TIKA-1567).
+
+  * Fixed infinite recursion while parsing some PDFs (TIKA-1038).
+
+  * XHTMLContentHandler now properly passes along body attributes,
+    contributed by Markus Jelsma (TIKA-995).
+
+  * TikaCLI option --compare-file-magic to report mime types known to
+    the file(1) tool but not known / fully known to Tika.
+
+  * MediaTypeRegistry support for returning known child types.
+
+  * Support for excluding (blacklisting) certain Parsers from being
+    used by DefaultParser via the Tika Config file, using the new
+    parser-exclude tag (TIKA-1558).
+
+  * Detect Global Change Master Directory (GCMD) Directory
+    Interchange Format (DIF) files (TIKA-1561).
+
+  * Tika's JAX-RS server can now return stacktraces for
+    parse exceptions (TIKA-1323).
+
+  * Added MockParser for testing handling of exceptions, errors
+    and hangs in code that uses parsers (TIKA-1553).
+
+  * The ForkParser service removed from Activator. Rollback of (TIKA-1354).
+
+  * Increased the speed of language identification by 
+    a factor of two -- contributed by Toke Eskildsen (TIKA-1549).
+
+  * Added parser for Sqlite3 db files. BEWARE: the org.xerial 
+    dependency includes native libs. Some users may need to 
+    exclude this dependency or configure it specially for 
+    their environment (TIKA-1511).
+
+  * Use POST instead of PUT for tika-server form methods
+    (TIKA-1547).
+
+  * A basic wrapper around the UNIX file command was 
+    added to extract Strings. In addition a parse to 
+    handle Strings parsing from octet-streams using Latin1
+    charsets as added (TIKA-1541, TIKA-1483).
+
+  * Add test files and detection mechanism for Gridded
+    Binary (GRIB) files (TIKA-1539).
+
+  * The RAR parser was updated to handle Chinese characters 
+    using the functionality provided by allowing encoding to
+    be used within ZipArchiveInputStream (TIKA-936).
+
+  * Fix out of memory error in surefire plugin (TIKA-1537).
+
+  * Build a parser to extract data from GRIB formats (TIKA-1423).
+
+  * Upgrade to Commons Compress 1.9 (TIKA-1534).
+
+  * Include media duration in metadata parsed by MP4Parser (TIKA-1530).
+
+  * Support password protected 7zip files (using a PasswordProvider,
+    in keeping with the other password supporting formats) (TIKA-1521).
+
+  * Password protected Zip files should not trigger an exception (TIKA-1028).
+
+Release 1.7 - 1/9/2015
+
+  * Fixed resource leak in OutlookPSTParser that caused TikaException 
+    when invoked via AutoDetectParser on Windows (TIKA-1506).
+
+  * HTML tags are properly stripped from content by FeedParser
+    (TIKA-1500).
+
+  * Tika Server support for selecting a single metadata key;
+    wrapped MetadataEP into MetadataResource (TIKA-1499).
+
+  * Tika Server support for JSON and XMP views of metadata (TIKA-1497).
+
+  * Tika Parent uses dependency management to keep duplicate 
+    dependencies in different modules the same version (TIKA-1384).
+
+  * Upgraded slf4j to version 1.7.7 (TIKA-1496).
+
+  * Tika Server support for RecursiveParserWrapper's JSON output
+    (endpoint=rmeta) equivalent to (TIKA-1451's) -J option 
+    in tika-app (TIKA-1498).
+
+  * Tika Server support for providing the password for files on a 
+    per-request basis through the Password http header (TIKA-1494).
+
+  * Simple support for the BPG (Better Portable Graphics) image format
+    (TIKA-1491, TIKA-1495).
+
+  * Prevent exceptions from being thrown for some malformed
+    mp3 files (TIKA-1218).
+
+  * Reformat pom.xml files to use two spaces per indent (TIKA-1475).
+
+  * Fix warning of slf4j logger on Tika Server startup (TIKA-1472).
+
+  * Tika CLI and GUI now have option to view JSON rendering of output
+    of RecursiveParserWrapper (TIKA-1451).
+
+  * Tika now integrates the Geospatial Data Abstraction Library
+    (GDAL) for parsing hundreds of geospatial formats (TIKA-605,
+    TIKA-1503).
+
+  * ExternalParsers can now use Regexs to specify dynamic keys
+   (TIKA-1441).
+
+  * Thread safety issues in ImageMetadataExtractor were resolved
+    (TIKA-1369).
+ 
+  * The ForkParser service is now registered in Activator
+    (TIKA-1354).
+
+  * The Rome Library was upgraded to version 1.5 (TIKA-1435).
+
+  * Add markup for files embedded in PDFs (TIKA-1427).
+ 
+  * Extract files embedded in annotations in PDFS (TIKA-1433).
+
+  * Upgrade to PDFBox 1.8.8 (TIKA-1419, TIKA-1442).
+
+  * Add RecursiveParserWrapper (aka Jukka's and Nick's) 
+    RecursiveMetadataParser (TIKA-1329)
+
+  * Add example for how to dump TikaConfig to XML (TIKA-1418).
+
+  * Allow users to specify a tika config file for tika-app (TIKA-1426).
+
+  * PackageParser includes the last-modified date from the archive
+    in the metadata, when handling embedded entries (TIKA-1246)
+
+  * Created a new Tesseract OCR Parser to extract text from images.
+    Requires installation of Tesseract before use (TIKA-93).
+
+  * Basic parser for older Excel formats, such as Excel 4, 5 and 95,
+    which can get simple text, and metadata for Excel 5+95 (TIKA-1490)
+
+
+Release 1.6 - 08/31/2014
+
+  * Parse output should indicate which Parser was actually used
+    (TIKA-674).
+
+  * Use the forbidden-apis Maven plugin to check for unsafe Java
+    operations (TIKA-1387).
+
+  * Created an ExternalTranslator class to interface with command
+    line Translators (TIKA-1385).
+
+  * Created a MosesTranslator as a subclass of ExternalTranslator
+    that calls the Moses Decoder machine translation program (TIKA-1385).
+
+  * Created the tika-example module. It will have examples of how to
+    use the main Tika interfaces (TIKA-1390).
+
+  * Upgraded to Commons Compress 1.8.1 (TIKA-1275).
+
+  * Upgraded to POI 3.11-beta1 (TIKA-1380).
+
+  * Tika now extracts SDTCell content from tables in .docx files (TIKA-1317).
+
+  * Tika now supports detection of the Persian/Farsi language.
+    (TIKA-1337)
+  
+  * The Tika Detector interface is now exposed through the JAX-RS
+    server (TIKA-1336, TIKA-1336).
+
+  * Tika now has support for parsing binary Matlab files as part of 
+    our larger effort to increase the number of scientific data formats 
+    supported. (TIKA-1327)
+
+  * The Tika Server URLs for the unpacker resources have been changed,
+    to bring them under a common prefix (TIKA-1324). The mapping is
+    /unpacker/{id} -> /unpack/{id}
+    /all/{id}      -> /unpack/all/{id}
+
+  * Added module and core Tika interface for translating text between
+    languages and added a default implementation that call's Microsoft's
+    translate service (TIKA-1319)
+
+  * Added an Translator implementation that calls Lingo24's Premium
+    Machine Translation API (TIKA-1381)
+
+  * Made RTFParser's list handling slightly more robust against corrupt
+    list metadata (TIKA-1305)
+
+  * Fixed bug in CLI json output (TIKA-1291/TIKA-1310)
+
+  * Added ability to turn off image extraction from PDFs (TIKA-1294).
+    Users must now turn on this capability via the PDFParserConfig.
+
+  * Upgrade to PDFBox 1.8.6 (TIKA-1290, TIKA-1231, TIKA-1233, TIKA-1352)
+
+  * Zip Container Detection for DWFX and XPS formats, which are OPC
+    based (TIKA-1204, TIKA-1221)
+
+  * Added a user facing welcome page to the Tika Server, which
+    says what it is, and a very brief summary of what is available. 
+    (TIKA-1269)
+
+  * Added Tika Server endpoints to list the available mime types,
+    Parsers and Detectors, similar to the --list-<foo> methods on
+    the Tika CLI App (TIKA-1270)
+
+  * Improvements to NetCDF and HDF parsing to mimic the output of
+    ncdump and extract text dimensions and spatial and variable
+    information from scientific data files (TIKA-1265)
+
+  * Extract attachments from RTF files (TIKA-1010)
+
+  * Support Outlook Personal Folders File Format *.pst (TIKA-623)
+  
+  * Added mime entries for additional Ogg based formats (TIKA-1259)
+
+  * Updated the Ogg Vorbis plugin to v0.4, which adds detection for a wider
+    range of Ogg formats, and parsers for more Ogg Audio ones (TIKA-1113)
+
+  * PDF: Images in PDF documents can now be extracted as embedded resources.
+    (TIKA-1268)
+
+  * Fixed RuntimeException thrown for certain Word Documents (TIKA-1251).
+
+  * CLI: TikaCLI now has another option: --list-parser-details-apt, which outputs
+    the list of supported parsers in APT format. This is used to generate the list
+    on the formats page (TIKA-411).
+
 Release 1.5 - 02/04/2014
 
   * Fixed bug in handling of embedded file processing in PDFs (TIKA-1228).

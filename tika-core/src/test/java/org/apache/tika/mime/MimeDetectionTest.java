@@ -25,8 +25,8 @@ import java.io.InputStream;
 import java.net.URL;
 
 import org.apache.tika.config.TikaConfig;
+import org.apache.tika.io.IOUtils;
 import org.apache.tika.metadata.Metadata;
-
 import org.junit.Before;
 import org.junit.Test;
 
@@ -74,6 +74,9 @@ public class MimeDetectionTest {
         testFile("image/cgm", "plotutils-bin-cgm-v3.cgm");
         // test HTML detection of malformed file, previously identified as image/cgm (TIKA-1170)
         testFile("text/html", "test-malformed-header.html.bin");
+        
+        //test GCMD Directory Interchange Format (.dif) TIKA-1561
+        testFile("text/dif+xml", "brwNIMS_2014.dif");
     }
 
     @Test
@@ -85,7 +88,7 @@ public class MimeDetectionTest {
                 new ByteArrayInputStream("\ufefftest".getBytes("UTF-16BE")),
                 new Metadata()));
         assertEquals(MediaType.TEXT_PLAIN, mimeTypes.detect(
-                new ByteArrayInputStream("\ufefftest".getBytes("UTF-8")),
+                new ByteArrayInputStream("\ufefftest".getBytes(IOUtils.UTF_8)),
                 new Metadata()));
     }
 
@@ -195,7 +198,7 @@ public class MimeDetectionTest {
     @Test
     public void testNotXML() throws IOException {
         assertEquals(MediaType.TEXT_PLAIN, mimeTypes.detect(
-                new ByteArrayInputStream("<!-- test -->".getBytes("UTF-8")),
+                new ByteArrayInputStream("<!-- test -->".getBytes(IOUtils.UTF_8)),
                 new Metadata()));
     }
 
@@ -211,4 +214,31 @@ public class MimeDetectionTest {
        }
     }
 
+    /**
+     * Tests that when two magic matches both apply, and both
+     *  have the same priority, we use the name to pick the
+     *  right one based on the glob, or the first one we
+     *  come across if not. See TIKA-1292 for more details.
+     */
+    @Test    
+    public void testMimeMagicClashSamePriority() throws IOException {
+        byte[] helloWorld = "Hello, World!".getBytes(IOUtils.UTF_8);
+        MediaType helloType = MediaType.parse("hello/world-file");
+        MediaType helloXType = MediaType.parse("hello/x-world-hello");
+        Metadata metadata;
+        
+        // With a filename, picks the right one
+        metadata = new Metadata();
+        metadata.set(Metadata.RESOURCE_NAME_KEY, "test.hello.world");
+        assertEquals(helloType, mimeTypes.detect(new ByteArrayInputStream(helloWorld), metadata));
+        
+        metadata = new Metadata();
+        metadata.set(Metadata.RESOURCE_NAME_KEY, "test.x-hello-world");
+        assertEquals(helloXType, mimeTypes.detect(new ByteArrayInputStream(helloWorld), metadata));
+        
+        // Without, goes for the one that sorts last
+        metadata = new Metadata();
+        metadata.set(Metadata.RESOURCE_NAME_KEY, "testingTESTINGtesting");
+        assertEquals(helloXType, mimeTypes.detect(new ByteArrayInputStream(helloWorld), metadata));
+    }
 }

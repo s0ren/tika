@@ -22,12 +22,12 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.Reader;
-import java.util.Iterator;
 import java.util.List;
 
 import org.apache.jempbox.xmp.XMPMetadata;
 import org.apache.jempbox.xmp.XMPSchemaDublinCore;
 import org.apache.tika.exception.TikaException;
+import org.apache.tika.io.IOUtils;
 import org.apache.tika.metadata.Metadata;
 import org.apache.tika.metadata.TikaCoreProperties;
 import org.xml.sax.InputSource;
@@ -39,7 +39,7 @@ public class JempboxExtractor {
     private Metadata metadata;
     
     // The XMP spec says it must be unicode, but for most file formats it specifies "must be encoded in UTF-8"
-    private static final String DEFAULT_XMP_CHARSET = "UTF-8";
+    private static final String DEFAULT_XMP_CHARSET = IOUtils.UTF_8.name();
 
     public JempboxExtractor(Metadata metadata) {
         this.metadata = metadata;
@@ -68,9 +68,8 @@ public class JempboxExtractor {
                     metadata.set(TikaCoreProperties.CREATOR, joinCreators(dc.getCreators()));
                 }
                 if (dc.getSubjects() != null && dc.getSubjects().size() > 0) {
-                    Iterator<String> keywords = dc.getSubjects().iterator();
-                    while (keywords.hasNext()) {
-                        metadata.add(TikaCoreProperties.KEYWORDS, keywords.next());
+                    for (String keyword : dc.getSubjects()) {
+                        metadata.add(TikaCoreProperties.KEYWORDS, keyword);
                     }
                     // TODO should we set KEYWORDS too?
                     // All tested photo managers set the same in Iptc.Application2.Keywords and Xmp.dc.subject
