@@ -24,6 +24,7 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 
 /**
@@ -152,6 +153,7 @@ public class ItemScope {
             j++;
         }
         return String.format(
+                Locale.ENGLISH,
                 "{ " +
                         "\"refs\" : %s, \"type\" : %s, \"properties\" : [ %s ]" +
                         " }",

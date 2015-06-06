@@ -17,6 +17,8 @@
 
 package org.apache.tika.parser.html.microdata;
 
+import java.util.Locale;
+
 /**
  * Describes a <b>Microdata item property</b>.
  *
@@ -71,6 +73,7 @@ public class ItemProp {
 
     public String toJSON() {
         return String.format(
+                Locale.ENGLISH,
                 "{ \"name\" : \"%s\", \"value\" : %s }",
                 name,
                 value.toJSON()

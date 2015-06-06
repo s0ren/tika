@@ -24,6 +24,7 @@ import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
+import java.util.Locale;
 import org.apache.commons.lang.time.DateUtils;
 
 /**
@@ -37,7 +38,7 @@ public class ItemPropValue {
      * ISO-8601 datetime format as specified by schema.org
      * @see http://schema.org/Date
      */
-    private static final SimpleDateFormat iso8601format = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'");
+    private static final SimpleDateFormat iso8601format = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'", Locale.ENGLISH);
 
     /**
      * ISO-8601 datetime formats
@@ -261,7 +262,7 @@ public class ItemPropValue {
             contentStr = content.toString();
         }
 
-        return String.format( "{ \"content\" : %s, \"type\" : \"%s\" }", contentStr, type );
+        return String.format(Locale.ENGLISH, "{ \"content\" : %s, \"type\" : \"%s\" }", contentStr, type );
     }
 
     @Override
